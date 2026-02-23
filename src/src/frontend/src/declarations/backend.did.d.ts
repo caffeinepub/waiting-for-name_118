@@ -17,6 +17,13 @@ export type Category = { 'social' : null } |
   { 'study' : null } |
   { 'fitness' : null } |
   { 'health' : null };
+export interface CategorySummary {
+  'totalTasks' : bigint,
+  'completedTasks' : bigint,
+  'date' : Date,
+  'completionPercentage' : number,
+  'category' : string,
+}
 export type Date = string;
 export type Priority = { 'low' : null } |
   { 'high' : null } |
@@ -46,11 +53,17 @@ export interface _SERVICE {
   'deleteTask' : ActorMethod<[TaskId], undefined>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCategorySummariesInRange' : ActorMethod<
+    [Date, Date],
+    Array<CategorySummary>
+  >,
+  'getCategorySummary' : ActorMethod<[Date], [] | [CategorySummary]>,
   'getTasksForDate' : ActorMethod<[Date], Array<Task>>,
   'getTasksForDateRange' : ActorMethod<[Date, Date], Array<Task>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'saveCategorySummary' : ActorMethod<[CategorySummary], undefined>,
   'toggleTaskCompletion' : ActorMethod<[TaskId], undefined>,
   'updateTask' : ActorMethod<
     [TaskId, string, Category, Priority, bigint, Date],

@@ -8,6 +8,13 @@ export interface None {
 }
 export type Option<T> = Some<T> | None;
 export type Date_ = string;
+export interface CategorySummary {
+    totalTasks: bigint;
+    completedTasks: bigint;
+    date: Date_;
+    completionPercentage: number;
+    category: string;
+}
 export type TaskId = bigint;
 export interface Task {
     id: TaskId;
@@ -48,11 +55,14 @@ export interface backendInterface {
     deleteTask(taskId: TaskId): Promise<void>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
+    getCategorySummariesInRange(startDate: Date_, endDate: Date_): Promise<Array<CategorySummary>>;
+    getCategorySummary(date: Date_): Promise<CategorySummary | null>;
     getTasksForDate(date: Date_): Promise<Array<Task>>;
     getTasksForDateRange(startDate: Date_, endDate: Date_): Promise<Array<Task>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    saveCategorySummary(summary: CategorySummary): Promise<void>;
     toggleTaskCompletion(taskId: TaskId): Promise<void>;
     updateTask(taskId: TaskId, name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: Date_): Promise<void>;
 }

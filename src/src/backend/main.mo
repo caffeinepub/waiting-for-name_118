@@ -3,11 +3,11 @@ import Array "mo:core/Array";
 import Order "mo:core/Order";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
+import Iter "mo:core/Iter";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
 actor {
-  // Initialize the access control system
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -24,7 +24,19 @@ actor {
     #other;
   };
 
-  type Priority = { #low; #medium; #high };
+  type Priority = {
+    #low;
+    #medium;
+    #high;
+  };
+
+  type CategorySummary = {
+    category : Text;
+    totalTasks : Nat;
+    completedTasks : Nat;
+    completionPercentage : Float;
+    date : Date;
+  };
 
   type Task = {
     id : TaskId;
@@ -43,8 +55,10 @@ actor {
   };
 
   var nextTaskId = 0;
+
   let userTasks = Map.empty<Principal, Map.Map<Nat, Task>>();
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let userCategorySummaries = Map.empty<Principal, Map.Map<Date, CategorySummary>>();
 
   module Task {
     public func compare(task1 : Task, task2 : Task) : Order.Order {
@@ -53,10 +67,19 @@ actor {
   };
 
   // User Profile Management Functions
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
+  public shared ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    // Check if caller is anonymous
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Anonymous users cannot access profiles. Please authenticate.");
     };
+
+    // Auto-grant #user permission if the caller doesn't have it
+    let currentRole = AccessControl.getUserRole(accessControlState, caller);
+    if (currentRole != #user and currentRole != #admin) {
+      // Auto-register the authenticated user
+      AccessControl.assignRole(accessControlState, caller, caller, #user);
+    };
+
     userProfiles.get(caller);
   };
 
@@ -207,6 +230,49 @@ actor {
         tasks.values().toArray().filter(
           func(task) {
             task.date >= startDate and task.date <= endDate
+          }
+        );
+      };
+    };
+  };
+
+  // Category Summary (Snapshots)
+  public shared ({ caller }) func saveCategorySummary(summary : CategorySummary) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save category summaries");
+    };
+
+    let summaries = switch (userCategorySummaries.get(caller)) {
+      case (null) { Map.empty<Date, CategorySummary>() };
+      case (?s) { s };
+    };
+
+    summaries.add(summary.date, summary);
+    userCategorySummaries.add(caller, summaries);
+  };
+
+  public query ({ caller }) func getCategorySummary(date : Date) : async ?CategorySummary {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view category summaries");
+    };
+
+    switch (userCategorySummaries.get(caller)) {
+      case (null) { null };
+      case (?summaries) { summaries.get(date) };
+    };
+  };
+
+  public query ({ caller }) func getCategorySummariesInRange(startDate : Date, endDate : Date) : async [CategorySummary] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view category summaries");
+    };
+
+    switch (userCategorySummaries.get(caller)) {
+      case (null) { [] };
+      case (?summaries) {
+        summaries.values().toArray().filter(
+          func(summary) {
+            summary.date >= startDate and summary.date <= endDate
           }
         );
       };

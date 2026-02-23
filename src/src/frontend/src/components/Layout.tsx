@@ -54,7 +54,7 @@ export function Layout() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <TrendingUp className="h-5 w-5" />
               </div>
-              <span className="text-lg font-bold">Productivity Tracker</span>
+              <span className="text-lg font-bold">GRINDTRACKER</span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-1">
@@ -136,21 +136,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <footer className="border-t border-border/40 bg-background/95 py-6 backdrop-blur">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>
-            © 2026. Built with ❤️ using{" "}
-            <a
-              href="https://caffeine.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium underline underline-offset-4 hover:text-primary"
-            >
-              caffeine.ai
-            </a>
-          </p>
-        </div>
-      </footer>
+
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useActor } from "./useActor";
-import type { Task, Category, Priority, TaskId, Date_, UserProfile } from "@/backend";
+import type { Task, Category, Priority, TaskId, Date_, UserProfile, CategorySummary } from "@/backend";
 
 // Query hook to get tasks for a specific date
 export function useTasksForDate(date: Date_) {
@@ -122,9 +122,40 @@ export function useToggleTaskCompletion() {
       if (!actor) throw new Error("Actor not initialized");
       return actor.toggleTaskCompletion(taskId);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.date] });
       queryClient.invalidateQueries({ queryKey: ["tasks", "range"] });
+      
+      // Auto-save category snapshot for the day
+      if (actor) {
+        try {
+          // Get updated tasks for the date
+          const tasksForDate = await actor.getTasksForDate(variables.date);
+          
+          // Calculate category scores using existing utility
+          const { calculateCategoryScores } = await import("@/utils/taskCalculations");
+          const categoryScores = calculateCategoryScores(tasksForDate, variables.date);
+          
+          // Convert CategoryScore[] to CategorySummary[] and save to backend
+          await Promise.all(
+            categoryScores.map((score) =>
+              actor.saveCategorySummary({
+                category: score.category,
+                totalTasks: BigInt(score.totalTasks),
+                completedTasks: BigInt(score.completedTasks),
+                completionPercentage: score.completionRate,
+                date: variables.date,
+              })
+            )
+          );
+          
+          // Invalidate category summary queries
+          queryClient.invalidateQueries({ queryKey: ["categorySummary", variables.date] });
+          queryClient.invalidateQueries({ queryKey: ["categorySummaries", "range"] });
+        } catch (error) {
+          console.error("Failed to save category snapshot:", error);
+        }
+      }
     },
   });
 }
@@ -224,11 +255,23 @@ export function useGetCallerUserProfile() {
   const query = useQuery<UserProfile | null>({
     queryKey: ['currentUserProfile'],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getCallerUserProfile();
+      console.log('[useGetCallerUserProfile] Starting profile query...');
+      if (!actor) {
+        console.error('[useGetCallerUserProfile] Actor not available');
+        throw new Error('Actor not available');
+      }
+      try {
+        const profile = await actor.getCallerUserProfile();
+        console.log('[useGetCallerUserProfile] Profile loaded successfully:', profile ? 'User profile found' : 'No profile (new user)');
+        return profile;
+      } catch (error) {
+        console.error('[useGetCallerUserProfile] Query failed:', error);
+        throw error;
+      }
     },
     enabled: !!actor && !actorFetching,
-    retry: false,
+    retry: 1, // Retry once if it fails
+    retryDelay: 1000, // Wait 1 second before retrying
   });
 
   // Return custom state that properly reflects actor dependency
@@ -251,6 +294,53 @@ export function useSaveCallerUserProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+    },
+  });
+}
+
+// Query hook to get category summary for a specific date
+export function useGetCategorySummary(date: Date_) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<CategorySummary | null>({
+    queryKey: ["categorySummary", date],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getCategorySummary(date);
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60000, // 1 minute
+  });
+}
+
+// Query hook to get category summaries for a date range
+export function useGetCategorySummariesInRange(startDate: Date_, endDate: Date_) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<CategorySummary[]>({
+    queryKey: ["categorySummaries", "range", startDate, endDate],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getCategorySummariesInRange(startDate, endDate);
+    },
+    enabled: !!actor && !isFetching && !!startDate && !!endDate,
+    staleTime: 60000,
+  });
+}
+
+// Mutation hook to save category summary
+export function useSaveCategorySummary() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (summary: CategorySummary) => {
+      if (!actor) throw new Error("Actor not initialized");
+      return actor.saveCategorySummary(summary);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["categorySummary", variables.date] });
+      queryClient.invalidateQueries({ queryKey: ["categorySummaries", "range"] });
     },
   });
 }

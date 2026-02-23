@@ -33,6 +33,13 @@ export const UserProfile = IDL.Record({
   'name' : IDL.Text,
   'preferences' : IDL.Opt(IDL.Text),
 });
+export const CategorySummary = IDL.Record({
+  'totalTasks' : IDL.Nat,
+  'completedTasks' : IDL.Nat,
+  'date' : Date,
+  'completionPercentage' : IDL.Float64,
+  'category' : IDL.Text,
+});
 export const Task = IDL.Record({
   'id' : TaskId,
   'date' : Date,
@@ -53,8 +60,18 @@ export const idlService = IDL.Service({
       [],
     ),
   'deleteTask' : IDL.Func([TaskId], [], []),
-  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], []),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getCategorySummariesInRange' : IDL.Func(
+      [Date, Date],
+      [IDL.Vec(CategorySummary)],
+      ['query'],
+    ),
+  'getCategorySummary' : IDL.Func(
+      [Date],
+      [IDL.Opt(CategorySummary)],
+      ['query'],
+    ),
   'getTasksForDate' : IDL.Func([Date], [IDL.Vec(Task)], ['query']),
   'getTasksForDateRange' : IDL.Func([Date, Date], [IDL.Vec(Task)], ['query']),
   'getUserProfile' : IDL.Func(
@@ -64,6 +81,7 @@ export const idlService = IDL.Service({
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
   'toggleTaskCompletion' : IDL.Func([TaskId], [], []),
   'updateTask' : IDL.Func(
       [TaskId, IDL.Text, Category, Priority, IDL.Nat, Date],
@@ -100,6 +118,13 @@ export const idlFactory = ({ IDL }) => {
     'name' : IDL.Text,
     'preferences' : IDL.Opt(IDL.Text),
   });
+  const CategorySummary = IDL.Record({
+    'totalTasks' : IDL.Nat,
+    'completedTasks' : IDL.Nat,
+    'date' : Date,
+    'completionPercentage' : IDL.Float64,
+    'category' : IDL.Text,
+  });
   const Task = IDL.Record({
     'id' : TaskId,
     'date' : Date,
@@ -120,8 +145,18 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'deleteTask' : IDL.Func([TaskId], [], []),
-    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], []),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getCategorySummariesInRange' : IDL.Func(
+        [Date, Date],
+        [IDL.Vec(CategorySummary)],
+        ['query'],
+      ),
+    'getCategorySummary' : IDL.Func(
+        [Date],
+        [IDL.Opt(CategorySummary)],
+        ['query'],
+      ),
     'getTasksForDate' : IDL.Func([Date], [IDL.Vec(Task)], ['query']),
     'getTasksForDateRange' : IDL.Func([Date, Date], [IDL.Vec(Task)], ['query']),
     'getUserProfile' : IDL.Func(
@@ -131,6 +166,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
     'toggleTaskCompletion' : IDL.Func([TaskId], [], []),
     'updateTask' : IDL.Func(
         [TaskId, IDL.Text, Category, Priority, IDL.Nat, Date],

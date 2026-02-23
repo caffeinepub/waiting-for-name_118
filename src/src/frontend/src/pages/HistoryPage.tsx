@@ -1,9 +1,26 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTasksForDateRange } from "@/hooks/useQueries";
-import { getMonthlyData } from "@/utils/taskCalculations";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useTasksForDateRange, useGetCategorySummariesInRange } from "@/hooks/useQueries";
+import { getMonthlyData, CATEGORY_LABELS } from "@/utils/taskCalculations";
+import { Category } from "@/backend";
+import type { CategoryScore } from "@/utils/taskCalculations";
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+} from "recharts";
 import {
   format,
   startOfMonth,
@@ -17,11 +34,17 @@ import {
 
 export function HistoryPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
 
   const { data: monthTasks = [], isLoading } = useTasksForDateRange(
+    format(monthStart, "yyyy-MM-dd"),
+    format(monthEnd, "yyyy-MM-dd")
+  );
+
+  const { data: categorySummaries = [] } = useGetCategorySummariesInRange(
     format(monthStart, "yyyy-MM-dd"),
     format(monthEnd, "yyyy-MM-dd")
   );
@@ -35,6 +58,13 @@ export function HistoryPage() {
   const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
   const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
 
+  const handleDayClick = (dateStr: string) => {
+    const summary = monthlyData.find((d) => d.date === dateStr);
+    if (summary && summary.totalTasks > 0) {
+      setSelectedDate(dateStr);
+    }
+  };
+
   const getColorForScore = (score: number) => {
     if (score === 0) return "bg-secondary";
     if (score < 40) return "bg-destructive/30";
@@ -42,6 +72,60 @@ export function HistoryPage() {
     if (score < 75) return "bg-chart-3/50";
     if (score < 90) return "bg-primary/60";
     return "bg-success";
+  };
+
+  // Get category scores for selected date from stored snapshots
+  const getStoredCategoryScoresForDate = (dateStr: string): CategoryScore[] => {
+    const summariesForDate = categorySummaries.filter((cs) => cs.date === dateStr);
+    
+    if (summariesForDate.length === 0) {
+      return [];
+    }
+
+    return summariesForDate.map((cs) => ({
+      category: cs.category as Category,
+      totalTasks: Number(cs.totalTasks),
+      completedTasks: Number(cs.completedTasks),
+      completionRate: cs.completionPercentage,
+    }));
+  };
+
+  const renderSpiderChart = (categoryScores: CategoryScore[]) => {
+    const chartData = categoryScores
+      .filter((cs) => cs.totalTasks > 0)
+      .map((cs) => ({
+        category: CATEGORY_LABELS[cs.category],
+        score: cs.completionRate,
+        fullMark: 100,
+      }));
+
+    if (chartData.length === 0) {
+      return (
+        <div className="flex h-[300px] items-center justify-center">
+          <p className="text-sm text-muted-foreground">No category data available</p>
+        </div>
+      );
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <RadarChart data={chartData}>
+          <PolarGrid stroke="hsl(var(--border))" />
+          <PolarAngleAxis
+            dataKey="category"
+            tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
+          />
+          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+          <Radar
+            name="Completion %"
+            dataKey="score"
+            stroke="hsl(var(--primary))"
+            fill="hsl(var(--primary))"
+            fillOpacity={0.6}
+          />
+        </RadarChart>
+      </ResponsiveContainer>
+    );
   };
 
   if (isLoading) {
@@ -107,19 +191,21 @@ export function HistoryPage() {
                 const summary = monthlyData.find((d) => d.date === dateStr);
                 const score = summary?.score || 0;
                 const isToday = isSameDay(day, new Date());
+                const hasData = summary && summary.totalTasks > 0;
 
                 return (
                   <div
                     key={dateStr}
-                    className={`group relative aspect-square cursor-pointer rounded-md transition-transform hover:scale-110 ${getColorForScore(score)} ${
+                    onClick={() => hasData && handleDayClick(dateStr)}
+                    className={`group relative aspect-square rounded-md transition-all ${getColorForScore(score)} ${
                       isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-                    }`}
-                    title={`${format(day, "MMM d")}: ${score}%${summary ? ` (${summary.completedTasks}/${summary.totalTasks})` : ""}`}
+                    } ${hasData ? "cursor-pointer hover:scale-110 hover:shadow-lg" : ""}`}
+                    title={`${format(day, "MMM d")}: ${score}%${summary ? ` (${summary.completedTasks}/${summary.totalTasks})` : ""}${hasData ? " - Click to view details" : ""}`}
                   >
                     <div className="flex h-full items-center justify-center text-xs font-medium">
                       {format(day, "d")}
                     </div>
-                    {summary && summary.totalTasks > 0 && (
+                    {hasData && (
                       <div className="absolute inset-x-0 -bottom-1 text-center text-[10px] font-bold opacity-0 transition-opacity group-hover:opacity-100">
                         {score}%
                       </div>
@@ -171,6 +257,85 @@ export function HistoryPage() {
           </div>
         </CardContent>
       </Card>
+
+      {selectedDate && (
+        <Dialog open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                Category Balance - {format(new Date(selectedDate), "EEEE, MMMM d, yyyy")}
+              </DialogTitle>
+              <DialogDescription>
+                Spider chart showing your performance across different categories
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {(() => {
+                const summary = monthlyData.find((d) => d.date === selectedDate);
+                const categoryScores = getStoredCategoryScoresForDate(selectedDate);
+
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-4 rounded-lg bg-secondary/30 p-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Daily Score</p>
+                        <p className="text-2xl font-bold text-primary">{summary?.score || 0}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Tasks Completed</p>
+                        <p className="text-2xl font-bold text-primary">
+                          {summary?.completedTasks || 0}/{summary?.totalTasks || 0}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Categories Active</p>
+                        <p className="text-2xl font-bold text-primary">
+                          {categoryScores.filter((cs) => cs.totalTasks > 0).length}
+                        </p>
+                      </div>
+                    </div>
+
+                    {categoryScores.length > 0 ? (
+                      <>
+                        {renderSpiderChart(categoryScores)}
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-semibold">Category Details</h4>
+                          <div className="grid gap-2">
+                            {categoryScores
+                              .filter((cs) => cs.totalTasks > 0)
+                              .map((cs) => (
+                                <div
+                                  key={cs.category}
+                                  className="flex items-center justify-between rounded-md bg-secondary/30 p-3"
+                                >
+                                  <span className="text-sm font-medium">{CATEGORY_LABELS[cs.category]}</span>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-xs text-muted-foreground">
+                                      {cs.completedTasks}/{cs.totalTasks}
+                                    </span>
+                                    <span className="text-sm font-bold text-primary">
+                                      {cs.completionRate}%
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex h-[300px] items-center justify-center">
+                        <p className="text-sm text-muted-foreground">
+                          No category data saved for this day. Complete tasks to generate a spider chart.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -1,82 +1,36 @@
-# Daily Routine & Productivity Tracker
+# GRINDTRACKER
 
 ## Current State
 
-The app currently stores all task data locally in browser storage using localStorage. This means:
-- Data is device-specific and cannot be synced between devices
-- Tasks, scores, streaks, and achievements are isolated to each browser
-- Users cannot access their data from multiple devices (phone and laptop)
-- No user authentication or identity management exists
-
-The app has the following features:
-- Task management (create, edit, delete, toggle completion)
-- Daily productivity scoring
-- Spider/radar chart for category balance
-- Weekly performance tracking and analytics
-- Streak tracking (daily and category streaks)
-- Achievement/gamification system
-- Calendar heatmap view
-- Routine repetition capabilities
-
-Current backend API only provides basic CRUD operations for tasks without user authentication:
-- `createTask`, `updateTask`, `deleteTask`, `toggleTaskCompletion`
-- `getTasksForDate`, `getTasksForDateRange`
+The app has user authentication with Internet Identity and authorization-based access control. When users log in, they are authenticated but not automatically granted the `#user` permission required to access profile and task data. The `getCallerUserProfile` function checks for `#user` permission before returning the profile, causing an authorization error that manifests as an infinite loading state when the query fails and retries.
 
 ## Requested Changes (Diff)
 
 ### Add
-- User authentication using Internet Identity (ICP's native authentication system)
-- User-specific data storage in backend (all tasks, streaks, achievements tied to authenticated user)
-- Cloud-based data persistence so users can access their data from any device
-- Login/logout UI flow
-- Protected routes that require authentication
-- User profile data storage (name, preferences, settings)
+- Auto-registration system that grants `#user` permission to new authenticated users
+- Backend endpoint to register/initialize new users with proper permissions
+- Frontend logic to handle first-time user registration seamlessly
 
 ### Modify
-- All backend task operations must be user-scoped (only return/modify tasks for authenticated user)
-- Frontend must authenticate users before accessing app features
-- All local storage data operations should be replaced with backend API calls
-- Dashboard and all pages must check authentication status and redirect to login if needed
+- `ProtectedRoute.tsx`: Add error handling and retry logic to detect authorization failures
+- `useQueries.ts`: Update `useGetCallerUserProfile` to handle errors gracefully and prevent infinite loading
+- Backend profile access: Allow profile retrieval to return null for new users without trapping on permission errors
 
 ### Remove
-- Local browser storage for tasks, streaks, and achievements
-- Any localStorage-based data persistence
+- (None)
 
 ## Implementation Plan
 
-1. **Select Authorization Component**
-   - Add the `authorization` Caffeine component to enable user authentication and role-based access control
-
-2. **Backend API Enhancement**
-   - Regenerate backend with requirements for user authentication and user-scoped data storage
-   - All task operations must be tied to the authenticated user's Principal ID
-   - Add user profile management endpoints
-   - Add endpoints for syncing all user data (tasks, streaks, achievements)
-
-3. **Frontend Authentication Integration**
-   - Add Internet Identity authentication flow
-   - Create login page with authentication UI
-   - Implement auth context/provider for managing user session state
-   - Add logout functionality
-   - Protect all routes to require authentication
-   - Show user identity/profile in UI (header/navbar)
-
-4. **Data Migration Strategy**
-   - On first login, check if user has local data
-   - Offer to migrate existing local data to cloud
-   - Clear local storage after successful migration
-
-5. **Cross-Device Sync**
-   - Replace all localStorage reads/writes with backend API calls
-   - Ensure all data operations go through authenticated backend
-   - Test data persistence across multiple devices
+1. **Backend**: Add auto-registration logic that grants `#user` permission when a new principal first attempts to access their profile
+2. **Backend**: Modify `getCallerUserProfile` to auto-grant `#user` permission for authenticated non-anonymous users if they don't have it yet
+3. **Frontend**: Add error boundary in `useGetCallerUserProfile` to prevent infinite retry loops
+4. **Frontend**: Update `ProtectedRoute` to handle authorization errors and show appropriate error messages
 
 ## UX Notes
 
-- Users should be greeted with a login screen on first visit
-- Login flow should be simple and use Internet Identity (no password required)
-- After login, users should see their existing data or empty state if new user
-- User identity should be visible in the app header with logout option
-- Seamless experience: once logged in, the app should work exactly as before but with cloud sync
-- All existing features (tasks, charts, streaks, achievements) remain unchanged in functionality
-- Users can access the same data from phone, laptop, or any browser after logging in
+After this fix, when users reload the page:
+- Authentication initializes → identity restored from storage
+- Actor initializes → backend connection established
+- Profile loads → user is auto-granted permissions if needed → profile returns (null for new users or existing profile)
+- New users see profile setup dialog, existing users proceed to dashboard
+- No more infinite "Loading your profile..." state

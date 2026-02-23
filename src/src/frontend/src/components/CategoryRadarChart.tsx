@@ -40,18 +40,25 @@ export function CategoryRadarChart({ categoryScores }: CategoryRadarChartProps) 
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <RadarChart data={chartData}>
-            <PolarGrid stroke="hsl(var(--border))" />
+            <PolarGrid stroke="hsl(var(--border))" strokeWidth={1} />
             <PolarAngleAxis
               dataKey="category"
               tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
             />
-            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+            <PolarRadiusAxis 
+              angle={90} 
+              domain={[0, 100]} 
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+              tickCount={6}
+              axisLine={false}
+            />
             <Radar
               name="Completion %"
               dataKey="score"
               stroke="hsl(var(--primary))"
               fill="hsl(var(--primary))"
               fillOpacity={0.6}
+              strokeWidth={2}
             />
           </RadarChart>
         </ResponsiveContainer>

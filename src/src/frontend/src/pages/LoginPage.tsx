@@ -45,7 +45,7 @@ export function LoginPage() {
             <TrendingUp className="h-10 w-10" />
           </div>
           <div>
-            <CardTitle className="text-3xl font-bold">Productivity Tracker</CardTitle>
+            <CardTitle className="text-3xl font-bold">GRINDTRACKER</CardTitle>
             <CardDescription className="mt-2 text-base">
               Track your daily routine, measure productivity, and achieve your goals
             </CardDescription>
