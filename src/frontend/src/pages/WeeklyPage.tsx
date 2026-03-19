@@ -1,3 +1,4 @@
+import { PremiumGate } from "@/components/PremiumGate";
 import { WeeklyChart } from "@/components/WeeklyChart";
 import {
   Card,
@@ -11,7 +12,7 @@ import { calculateWeeklySummary } from "@/utils/taskCalculations";
 import { endOfWeek, format, startOfWeek } from "date-fns";
 import { Calendar, Minus, TrendingDown, TrendingUp } from "lucide-react";
 
-export function WeeklyPage() {
+function WeeklyPageInner() {
   const weekStart = format(
     startOfWeek(new Date(), { weekStartsOn: 1 }),
     "yyyy-MM-dd",
@@ -214,5 +215,13 @@ export function WeeklyPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export function WeeklyPage() {
+  return (
+    <PremiumGate featureName="Weekly Performance">
+      <WeeklyPageInner />
+    </PremiumGate>
   );
 }

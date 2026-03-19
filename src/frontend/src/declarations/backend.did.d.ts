@@ -20,11 +20,20 @@ export type Category = { 'social' : null } |
 export interface CategorySummary {
   'totalTasks' : bigint,
   'completedTasks' : bigint,
-  'date' : Date,
+  'date' : string,
   'completionPercentage' : number,
   'category' : string,
 }
-export type Date = string;
+export interface PremiumStatus {
+  'identityCode' : string,
+  'status' : { 'pending' : null } |
+    { 'approved' : null } |
+    { 'rejected' : null },
+  'appliedAt' : bigint,
+  'displayName' : [] | [string],
+  'applied' : boolean,
+  'premiumCode' : [] | [string],
+}
 export type Priority = { 'low' : null } |
   { 'high' : null } |
   { 'medium' : null };
@@ -36,8 +45,8 @@ export interface PublicUserStats {
   'totalTaskCompletions' : bigint,
 }
 export interface Task {
-  'id' : TaskId,
-  'date' : Date,
+  'id' : bigint,
+  'date' : string,
   'name' : string,
   'createdAt' : bigint,
   'completed' : boolean,
@@ -45,7 +54,6 @@ export interface Task {
   'estimatedDuration' : bigint,
   'priority' : Priority,
 }
-export type TaskId = bigint;
 export interface TaskSuggestion {
   'name' : string,
   'category' : Category,
@@ -60,39 +68,59 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'acceptFriendRequest' : ActorMethod<[Principal], undefined>,
+  'applyForPremium' : ActorMethod<[string], undefined>,
+  'approvePremium' : ActorMethod<[Principal], string>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createTask' : ActorMethod<
-    [string, Category, Priority, bigint, Date, bigint],
-    TaskId
+    [string, Category, Priority, bigint, string, bigint],
+    bigint
   >,
-  'deleteTask' : ActorMethod<[TaskId], undefined>,
+  'deleteTask' : ActorMethod<[bigint], undefined>,
+  'getAllPremiumApplications' : ActorMethod<
+    [],
+    Array<[Principal, PremiumStatus]>
+  >,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCategorySummariesInRange' : ActorMethod<
-    [Date, Date],
+    [string, string],
     Array<CategorySummary>
   >,
-  'getCategorySummary' : ActorMethod<[Date], [] | [CategorySummary]>,
+  'getCategorySummary' : ActorMethod<[string], [] | [CategorySummary]>,
   'getFriendList' : ActorMethod<[], Array<Principal>>,
   'getIncomingRequests' : ActorMethod<[], Array<Principal>>,
+  'getMyIdentityCode' : ActorMethod<[], string>,
+  'getMyPremiumApplication' : ActorMethod<[], [] | [PremiumStatus]>,
   'getOutgoingRequests' : ActorMethod<[], Array<Principal>>,
+  'getPremiumApplicationsSummary' : ActorMethod<
+    [],
+    [bigint, Array<[Principal, PremiumStatus]>]
+  >,
+  'getPremiumStatus' : ActorMethod<[Principal], [] | [PremiumStatus]>,
   'getPublicStatsForUsers' : ActorMethod<
     [Array<Principal>],
     Array<[Principal, PublicUserStats]>
   >,
   'getTaskSuggestions' : ActorMethod<[], Array<TaskSuggestion>>,
-  'getTasksForDate' : ActorMethod<[Date], Array<Task>>,
-  'getTasksForDateRange' : ActorMethod<[Date, Date], Array<Task>>,
+  'getTasksForDate' : ActorMethod<[string], Array<Task>>,
+  'getTasksForDateRange' : ActorMethod<[string, string], Array<Task>>,
+  'getUniversalMasterCode' : ActorMethod<[], string>,
+  'getUserIdentityCode' : ActorMethod<[Principal], string>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isCallerPremium' : ActorMethod<[], boolean>,
+  'isUserPremium' : ActorMethod<[Principal], boolean>,
+  'redeemPremiumCode' : ActorMethod<[string], boolean>,
+  'rejectPremium' : ActorMethod<[Principal], undefined>,
   'removeFriend' : ActorMethod<[Principal], undefined>,
+  'requestPremiumStatus' : ActorMethod<[], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveCategorySummary' : ActorMethod<[CategorySummary], undefined>,
   'sendFriendRequest' : ActorMethod<[Principal], undefined>,
-  'toggleTaskCompletion' : ActorMethod<[TaskId], undefined>,
+  'toggleTaskCompletion' : ActorMethod<[bigint], undefined>,
   'updatePublicUserStats' : ActorMethod<[PublicUserStats], undefined>,
   'updateTask' : ActorMethod<
-    [TaskId, string, Category, Priority, bigint, Date],
+    [bigint, string, Category, Priority, bigint, string],
     undefined
   >,
 }

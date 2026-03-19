@@ -7,18 +7,24 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export type Date_ = string;
+export interface PremiumStatus {
+    identityCode: string;
+    status: Variant_pending_approved_rejected;
+    appliedAt: bigint;
+    displayName?: string;
+    applied: boolean;
+    premiumCode?: string;
+}
 export interface CategorySummary {
     totalTasks: bigint;
     completedTasks: bigint;
-    date: Date_;
+    date: string;
     completionPercentage: number;
     category: string;
 }
-export type TaskId = bigint;
 export interface Task {
-    id: TaskId;
-    date: Date_;
+    id: bigint;
+    date: string;
     name: string;
     createdAt: bigint;
     completed: boolean;
@@ -44,6 +50,11 @@ export interface TaskSuggestion {
     priority: Priority;
     reason: string;
 }
+export interface WheelData {
+    totalSpinsEarned: bigint;
+    totalSpinsUsed: bigint;
+    earnedTitles: Array<string>;
+}
 export enum Category {
     social = "social",
     other = "other",
@@ -63,29 +74,52 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export enum Variant_pending_approved_rejected {
+    pending = "pending",
+    approved = "approved",
+    rejected = "rejected"
+}
 export interface backendInterface {
     acceptFriendRequest(userId: Principal): Promise<void>;
+    applyForPremium(displayName: string): Promise<void>;
+    approvePremium(applicant: Principal): Promise<string>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createTask(name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: Date_, createdAt: bigint): Promise<TaskId>;
-    deleteTask(taskId: TaskId): Promise<void>;
+    createTask(name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: string, createdAt: bigint): Promise<bigint>;
+    deleteTask(taskId: bigint): Promise<void>;
+    getAllPremiumApplications(): Promise<Array<[Principal, PremiumStatus]>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getCategorySummariesInRange(startDate: Date_, endDate: Date_): Promise<Array<CategorySummary>>;
-    getCategorySummary(date: Date_): Promise<CategorySummary | null>;
+    getCategorySummariesInRange(startDate: string, endDate: string): Promise<Array<CategorySummary>>;
+    getCategorySummary(date: string): Promise<CategorySummary | null>;
+    getEarnedTitlesForUser(user: Principal): Promise<Array<string>>;
     getFriendList(): Promise<Array<Principal>>;
     getIncomingRequests(): Promise<Array<Principal>>;
+    getMyIdentityCode(): Promise<string>;
+    getMyPremiumApplication(): Promise<PremiumStatus | null>;
+    getMyWheelData(): Promise<WheelData>;
     getOutgoingRequests(): Promise<Array<Principal>>;
+    getPremiumApplicationsSummary(): Promise<[bigint, Array<[Principal, PremiumStatus]>]>;
+    getPremiumStatus(user: Principal): Promise<PremiumStatus | null>;
     getPublicStatsForUsers(users: Array<Principal>): Promise<Array<[Principal, PublicUserStats]>>;
+    getEarnedTitlesForUsers(users: Array<Principal>): Promise<Array<[Principal, Array<string>]>>;
     getTaskSuggestions(): Promise<Array<TaskSuggestion>>;
-    getTasksForDate(date: Date_): Promise<Array<Task>>;
-    getTasksForDateRange(startDate: Date_, endDate: Date_): Promise<Array<Task>>;
+    getTasksForDate(date: string): Promise<Array<Task>>;
+    getTasksForDateRange(startDate: string, endDate: string): Promise<Array<Task>>;
+    getUniversalMasterCode(): Promise<string>;
+    getUserIdentityCode(user: Principal): Promise<string>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    isCallerPremium(): Promise<boolean>;
+    isUserPremium(user: Principal): Promise<boolean>;
+    redeemPremiumCode(code: string): Promise<boolean>;
+    rejectPremium(applicant: Principal): Promise<void>;
     removeFriend(friendId: Principal): Promise<void>;
+    requestPremiumStatus(): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveCategorySummary(summary: CategorySummary): Promise<void>;
     sendFriendRequest(userId: Principal): Promise<void>;
-    toggleTaskCompletion(taskId: TaskId): Promise<void>;
+    spinWheel(wheelType: { common: null } | { epic: null } | { legendary: null }): Promise<string>;
+    toggleTaskCompletion(taskId: bigint): Promise<void>;
     updatePublicUserStats(stats: PublicUserStats): Promise<void>;
-    updateTask(taskId: TaskId, name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: Date_): Promise<void>;
+    updateTask(taskId: bigint, name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: string): Promise<void>;
 }

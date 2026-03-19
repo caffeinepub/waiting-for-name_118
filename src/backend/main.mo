@@ -1,21 +1,20 @@
 import Map "mo:core/Map";
+import Text "mo:core/Text";
+import Nat "mo:core/Nat";
+import Float "mo:core/Float";
 import Array "mo:core/Array";
 import Runtime "mo:core/Runtime";
-import Time "mo:core/Time";
-import Nat "mo:core/Nat";
-import Iter "mo:core/Iter";
 import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 
+import Iter "mo:core/Iter";
+import Time "mo:core/Time";
 
 
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
-
-  type TaskId = Nat;
-  type Date = Text;
 
   public type Category = {
     #study;
@@ -27,27 +26,33 @@ actor {
     #other;
   };
 
-  type Priority = {
+  public type Priority = {
     #low;
     #medium;
     #high;
   };
 
-  type CategorySummary = {
+  public type WheelType = {
+    #common;
+    #epic;
+    #legendary;
+  };
+
+  public type CategorySummary = {
     category : Text;
     totalTasks : Nat;
     completedTasks : Nat;
     completionPercentage : Float;
-    date : Date;
+    date : Text;
   };
 
   public type Task = {
-    id : TaskId;
+    id : Nat;
     name : Text;
     category : Category;
     priority : Priority;
     estimatedDuration : Nat;
-    date : Date;
+    date : Text;
     completed : Bool;
     createdAt : Int;
   };
@@ -73,14 +78,74 @@ actor {
     level : Nat;
   };
 
+  public type PremiumStatus = {
+    status : { #pending; #approved; #rejected };
+    premiumCode : ?Text;
+    applied : Bool;
+    displayName : ?Text;
+    identityCode : Text;
+    appliedAt : Int;
+  };
+
+  public type WheelData = {
+    totalSpinsEarned : Nat;
+    totalSpinsUsed : Nat;
+    earnedTitles : [Text];
+  };
+
+  let universalMasterCode = "GRIND-MASTER-2026";
   var nextTaskId = 0;
+  var premiumApplicationsVersion = 0;
 
   let userTasks = Map.empty<Principal, Map.Map<Nat, Task>>();
   let userProfiles = Map.empty<Principal, UserProfile>();
-  let userCategorySummaries = Map.empty<Principal, Map.Map<Date, CategorySummary>>();
+  let userCategorySummaries = Map.empty<Principal, Map.Map<Text, CategorySummary>>();
   let friendLists = Map.empty<Principal, Map.Map<Principal, ()>>();
   let friendRequests = Map.empty<Principal, Map.Map<Principal, ()>>();
   let publicUserStats = Map.empty<Principal, PublicUserStats>();
+  let premiumStatus = Map.empty<Principal, PremiumStatus>();
+  let isPremium = Map.empty<Principal, Bool>();
+  let userWheelData = Map.empty<Principal, WheelData>();
+
+  // Wheel title pools
+  let commonTitles : [Text] = [
+    "Rookie Grinder",
+    "Task Tackler",
+    "Daily Doer",
+    "Habit Builder",
+    "Consistency Starter",
+    "Early Bird",
+    "The Newcomer",
+    "Grind Initiate",
+    "First Steps",
+    "Getting Started",
+  ];
+
+  let epicTitles : [Text] = [
+    "Streak Machine",
+    "Dominator",
+    "Long Time Fan",
+    "New Blood",
+    "Task Master",
+    "Focus Warrior",
+    "Productivity Pro",
+    "Challenge Accepted",
+    "The Grinder",
+    "Momentum Builder",
+  ];
+
+  let legendaryTitles : [Text] = [
+    "Consistency God",
+    "Elite Grinder",
+    "Unstoppable Force",
+    "Legend",
+    "Titan of Grind",
+    "Supreme Achiever",
+    "The Relentless",
+    "Apex Performer",
+    "Grind Master",
+    "Immortal Grinder",
+  ];
 
   let taskSuggestions : [TaskSuggestion] = [
     // Study suggestions
@@ -189,6 +254,41 @@ actor {
       estimatedDuration = 45;
       reason = "Test knowledge and measure progress";
     },
+    {
+      name = "Study mathematics and problem-solving";
+      category = #study;
+      priority = #high;
+      estimatedDuration = 60;
+      reason = "Build analytical thinking skills";
+    },
+    {
+      name = "Read scientific articles";
+      category = #study;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Stay updated with latest research";
+    },
+    {
+      name = "Practice speed reading";
+      category = #study;
+      priority = #medium;
+      estimatedDuration = 20;
+      reason = "Process information faster";
+    },
+    {
+      name = "Complete online certification module";
+      category = #study;
+      priority = #high;
+      estimatedDuration = 90;
+      reason = "Work toward professional credentials";
+    },
+    {
+      name = "Mind-map a complex topic";
+      category = #study;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Visualize and connect ideas";
+    },
 
     // Fitness suggestions
     {
@@ -295,6 +395,41 @@ actor {
       priority = #medium;
       estimatedDuration = 30;
       reason = "Essential for overall fitness";
+    },
+    {
+      name = "Rock climbing or bouldering";
+      category = #fitness;
+      priority = #medium;
+      estimatedDuration = 90;
+      reason = "Full body strength and mental challenge";
+    },
+    {
+      name = "Martial arts practice";
+      category = #fitness;
+      priority = #high;
+      estimatedDuration = 60;
+      reason = "Discipline, strength, and self-defense";
+    },
+    {
+      name = "Flexibility routine";
+      category = #fitness;
+      priority = #medium;
+      estimatedDuration = 20;
+      reason = "Prevent injuries and improve range of motion";
+    },
+    {
+      name = "Hiking or trail walk";
+      category = #fitness;
+      priority = #medium;
+      estimatedDuration = 120;
+      reason = "Connect with nature while staying active";
+    },
+    {
+      name = "Sprint intervals";
+      category = #fitness;
+      priority = #high;
+      estimatedDuration = 20;
+      reason = "Maximize calorie burn in minimal time";
     },
 
     // Health suggestions
@@ -403,6 +538,41 @@ actor {
       estimatedDuration = 30;
       reason = "Improve digestion and satisfy hunger";
     },
+    {
+      name = "Digital detox hour";
+      category = #health;
+      priority = #medium;
+      estimatedDuration = 60;
+      reason = "Rest your eyes and mental clarity";
+    },
+    {
+      name = "Cold shower therapy";
+      category = #health;
+      priority = #medium;
+      estimatedDuration = 10;
+      reason = "Boost alertness and circulation";
+    },
+    {
+      name = "Journaling for mental health";
+      category = #health;
+      priority = #medium;
+      estimatedDuration = 20;
+      reason = "Process emotions and thoughts";
+    },
+    {
+      name = "Eye care exercises";
+      category = #health;
+      priority = #low;
+      estimatedDuration = 10;
+      reason = "Reduce eye strain from screens";
+    },
+    {
+      name = "Nature walk for mental reset";
+      category = #health;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Restore focus and reduce anxiety";
+    },
 
     // Work suggestions
     {
@@ -509,6 +679,41 @@ actor {
       priority = #high;
       estimatedDuration = 30;
       reason = "Maintain growth-oriented work habits";
+    },
+    {
+      name = "Pomodoro technique session";
+      category = #work;
+      priority = #high;
+      estimatedDuration = 25;
+      reason = "Boost focus with timed work blocks";
+    },
+    {
+      name = "Networking and relationship building";
+      category = #work;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Expand professional connections";
+    },
+    {
+      name = "Creative brainstorming session";
+      category = #work;
+      priority = #medium;
+      estimatedDuration = 45;
+      reason = "Generate new ideas and solutions";
+    },
+    {
+      name = "Review and respond to feedback";
+      category = #work;
+      priority = #high;
+      estimatedDuration = 30;
+      reason = "Improve quality and relationships";
+    },
+    {
+      name = "Portfolio or resume update";
+      category = #work;
+      priority = #medium;
+      estimatedDuration = 45;
+      reason = "Keep professional profile current";
     },
 
     // Personal Development suggestions
@@ -617,6 +822,41 @@ actor {
       estimatedDuration = 45;
       reason = "Boost self-discovery and connection";
     },
+    {
+      name = "Life audit and goal review";
+      category = #personalDevelopment;
+      priority = #high;
+      estimatedDuration = 60;
+      reason = "Align actions with long-term vision";
+    },
+    {
+      name = "Public speaking practice";
+      category = #personalDevelopment;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Build confidence and communication";
+    },
+    {
+      name = "Learn a new hobby";
+      category = #personalDevelopment;
+      priority = #low;
+      estimatedDuration = 60;
+      reason = "Expand life experiences and joy";
+    },
+    {
+      name = "Declutter digital life";
+      category = #personalDevelopment;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Mental clarity through organization";
+    },
+    {
+      name = "Practice visualization";
+      category = #personalDevelopment;
+      priority = #medium;
+      estimatedDuration = 15;
+      reason = "Strengthen goal focus and motivation";
+    },
 
     // Social suggestions
     {
@@ -723,6 +963,41 @@ actor {
       priority = #medium;
       estimatedDuration = 90;
       reason = "Strengthen relationships through consistency";
+    },
+    {
+      name = "Write thoughtful messages to loved ones";
+      category = #social;
+      priority = #low;
+      estimatedDuration = 20;
+      reason = "Express care and appreciation";
+    },
+    {
+      name = "Mentor someone younger";
+      category = #social;
+      priority = #medium;
+      estimatedDuration = 60;
+      reason = "Share experience and give back";
+    },
+    {
+      name = "Reconnect with old friends";
+      category = #social;
+      priority = #low;
+      estimatedDuration = 30;
+      reason = "Revive valuable relationships";
+    },
+    {
+      name = "Active listening practice";
+      category = #social;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Improve empathy and relationships";
+    },
+    {
+      name = "Conflict resolution conversation";
+      category = #social;
+      priority = #high;
+      estimatedDuration = 45;
+      reason = "Maintain healthy relationships";
     },
 
     // Other suggestions
@@ -831,20 +1106,57 @@ actor {
       estimatedDuration = 60;
       reason = "Plan for adventure and relaxation";
     },
+    {
+      name = "Car maintenance check";
+      category = #other;
+      priority = #medium;
+      estimatedDuration = 30;
+      reason = "Prevent unexpected breakdowns";
+    },
+    {
+      name = "Emergency preparedness review";
+      category = #other;
+      priority = #high;
+      estimatedDuration = 30;
+      reason = "Ensure family safety";
+    },
+    {
+      name = "Side project work session";
+      category = #other;
+      priority = #medium;
+      estimatedDuration = 60;
+      reason = "Progress on passion projects";
+    },
+    {
+      name = "Research investments or savings";
+      category = #other;
+      priority = #high;
+      estimatedDuration = 45;
+      reason = "Build long-term financial security";
+    },
+    {
+      name = "Declutter and donate items";
+      category = #other;
+      priority = #medium;
+      estimatedDuration = 60;
+      reason = "Create space and help others";
+    },
   ];
 
-  module Task {
-    public func compare(task1 : Task, task2 : Task) : Nat {
-      if (task1.id < task2.id) { 0 } else {
-        if (task1.id > task2.id) { 1 } else { 2 };
-      };
+  func verifyUserAccess(caller : Principal) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access this data");
+    };
+  };
+
+  func verifyAdminAccess(caller : Principal) {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admin can access this data");
     };
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
-    };
+    verifyUserAccess(caller);
     userProfiles.get(caller);
   };
 
@@ -856,9 +1168,7 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
+    verifyUserAccess(caller);
     userProfiles.add(caller, profile);
   };
 
@@ -867,16 +1177,12 @@ actor {
     category : Category,
     priority : Priority,
     estimatedDuration : Nat,
-    date : Date,
+    date : Text,
     createdAt : Int,
-  ) : async TaskId {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can create tasks");
-    };
-
+  ) : async Nat {
+    verifyUserAccess(caller);
     let taskId = nextTaskId;
     nextTaskId += 1;
-
     let task : Task = {
       id = taskId;
       name;
@@ -887,29 +1193,24 @@ actor {
       completed = false;
       createdAt;
     };
-
     let tasks = switch (userTasks.get(caller)) {
       case (null) { Map.empty<Nat, Task>() };
       case (?t) { t };
     };
-
     tasks.add(taskId, task);
     userTasks.add(caller, tasks);
     taskId;
   };
 
   public shared ({ caller }) func updateTask(
-    taskId : TaskId,
+    taskId : Nat,
     name : Text,
     category : Category,
     priority : Priority,
     estimatedDuration : Nat,
-    date : Date,
+    date : Text,
   ) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update tasks");
-    };
-
+    verifyUserAccess(caller);
     switch (userTasks.get(caller)) {
       case (null) { Runtime.trap("User has no tasks") };
       case (?tasks) {
@@ -931,11 +1232,8 @@ actor {
     };
   };
 
-  public shared ({ caller }) func deleteTask(taskId : TaskId) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can delete tasks");
-    };
-
+  public shared ({ caller }) func deleteTask(taskId : Nat) : async () {
+    verifyUserAccess(caller);
     switch (userTasks.get(caller)) {
       case (null) { Runtime.trap("User has no tasks") };
       case (?tasks) {
@@ -947,11 +1245,8 @@ actor {
     };
   };
 
-  public shared ({ caller }) func toggleTaskCompletion(taskId : TaskId) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can toggle task completion");
-    };
-
+  public shared ({ caller }) func toggleTaskCompletion(taskId : Nat) : async () {
+    verifyUserAccess(caller);
     switch (userTasks.get(caller)) {
       case (null) { Runtime.trap("User has no tasks") };
       case (?tasks) {
@@ -968,11 +1263,8 @@ actor {
     };
   };
 
-  public query ({ caller }) func getTasksForDate(date : Date) : async [Task] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view tasks");
-    };
-
+  public query ({ caller }) func getTasksForDate(date : Text) : async [Task] {
+    verifyUserAccess(caller);
     switch (userTasks.get(caller)) {
       case (null) { [] };
       case (?tasks) {
@@ -983,11 +1275,8 @@ actor {
     };
   };
 
-  public query ({ caller }) func getTasksForDateRange(startDate : Date, endDate : Date) : async [Task] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view tasks");
-    };
-
+  public query ({ caller }) func getTasksForDateRange(startDate : Text, endDate : Text) : async [Task] {
+    verifyUserAccess(caller);
     switch (userTasks.get(caller)) {
       case (null) { [] };
       case (?tasks) {
@@ -1001,35 +1290,25 @@ actor {
   };
 
   public shared ({ caller }) func saveCategorySummary(summary : CategorySummary) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save category summaries");
-    };
-
+    verifyUserAccess(caller);
     let summaries = switch (userCategorySummaries.get(caller)) {
-      case (null) { Map.empty<Date, CategorySummary>() };
+      case (null) { Map.empty<Text, CategorySummary>() };
       case (?s) { s };
     };
-
     summaries.add(summary.date, summary);
     userCategorySummaries.add(caller, summaries);
   };
 
-  public query ({ caller }) func getCategorySummary(date : Date) : async ?CategorySummary {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view category summaries");
-    };
-
+  public query ({ caller }) func getCategorySummary(date : Text) : async ?CategorySummary {
+    verifyUserAccess(caller);
     switch (userCategorySummaries.get(caller)) {
       case (null) { null };
       case (?summaries) { summaries.get(date) };
     };
   };
 
-  public query ({ caller }) func getCategorySummariesInRange(startDate : Date, endDate : Date) : async [CategorySummary] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view category summaries");
-    };
-
+  public query ({ caller }) func getCategorySummariesInRange(startDate : Text, endDate : Text) : async [CategorySummary] {
+    verifyUserAccess(caller);
     switch (userCategorySummaries.get(caller)) {
       case (null) { [] };
       case (?summaries) {
@@ -1043,32 +1322,24 @@ actor {
   };
 
   public shared ({ caller }) func getTaskSuggestions() : async [TaskSuggestion] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can get suggestions");
-    };
-
-    let seed = Time.now();
-
+    verifyUserAccess(caller);
+    let seedInt : Int = Time.now();
+    let seed : Nat = if (seedInt >= 0) { seedInt.toNat() } else { 0 };
     let taskArray = taskSuggestions.toVarArray<TaskSuggestion>();
     let n = taskArray.size();
-
     var i = n - 1;
     while (i > 0) {
-      let j = (seed.toNat() + i) % n;
+      let j = (seed + i) % n;
       let temp = taskArray[i];
       taskArray[i] := taskArray[j];
       taskArray[j] := temp;
       i -= 1;
     };
-
     taskArray.toArray();
   };
 
-  ////// FRRIEND SYSTEM SECTION ///////
   public query ({ caller }) func getFriendList() : async [Principal] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view friends");
-    };
+    verifyUserAccess(caller);
     switch (friendLists.get(caller)) {
       case (null) { [] };
       case (?map) { map.keys().toArray() };
@@ -1076,9 +1347,7 @@ actor {
   };
 
   public query ({ caller }) func getIncomingRequests() : async [Principal] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view requests");
-    };
+    verifyUserAccess(caller);
     switch (friendRequests.get(caller)) {
       case (null) { [] };
       case (?map) { map.keys().toArray() };
@@ -1086,9 +1355,7 @@ actor {
   };
 
   public query ({ caller }) func getOutgoingRequests() : async [Principal] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view outgoing requests");
-    };
+    verifyUserAccess(caller);
     var outgoing : [Principal] = [];
     for ((userId, requests) in friendRequests.entries()) {
       if (requests.containsKey(caller)) {
@@ -1099,15 +1366,10 @@ actor {
   };
 
   public shared ({ caller }) func sendFriendRequest(userId : Principal) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can send requests");
-    };
-
+    verifyUserAccess(caller);
     if (caller == userId) {
       Runtime.trap("Cannot send request to yourself");
     };
-
-    // Check if already friends
     switch (friendLists.get(caller)) {
       case (?map) {
         if (map.containsKey(userId)) {
@@ -1116,47 +1378,33 @@ actor {
       };
       case (null) {};
     };
-
-    // Add friend request
     let requests = switch (friendRequests.get(userId)) {
       case (null) { Map.empty<Principal, ()>() };
       case (?existing) { existing };
     };
-
-    // Check if already friend request
     if (requests.containsKey(caller)) {
       Runtime.trap("Request already sent");
     };
-
     requests.add(caller, ());
     friendRequests.add(userId, requests);
   };
 
   public shared ({ caller }) func acceptFriendRequest(userId : Principal) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can accept requests");
-    };
-
-    // Check if both users have sent requests to each other
+    verifyUserAccess(caller);
     switch (friendRequests.get(caller)) {
       case (null) { Runtime.trap("No requests to accept") };
       case (?requests) {
         if (not requests.containsKey(userId)) {
           Runtime.trap("No pending request from this user");
         };
-
-        // Remove requests from both sides
         requests.remove(userId);
         friendRequests.add(caller, requests);
-
-        // Add to each other's friends lists
         let callerFriends = switch (friendLists.get(caller)) {
           case (null) { Map.empty<Principal, ()>() };
           case (?existing) { existing };
         };
         callerFriends.add(userId, ());
         friendLists.add(caller, callerFriends);
-
         let userFriends = switch (friendLists.get(userId)) {
           case (null) { Map.empty<Principal, ()>() };
           case (?existing) { existing };
@@ -1168,10 +1416,7 @@ actor {
   };
 
   public shared ({ caller }) func removeFriend(friendId : Principal) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can remove friends");
-    };
-
+    verifyUserAccess(caller);
     switch (friendLists.get(caller)) {
       case (null) { Runtime.trap("No friends to remove") };
       case (?friends) {
@@ -1180,7 +1425,6 @@ actor {
         };
         friends.remove(friendId);
         friendLists.add(caller, friends);
-
         switch (friendLists.get(friendId)) {
           case (null) {};
           case (?friends) {
@@ -1193,17 +1437,21 @@ actor {
   };
 
   public shared ({ caller }) func updatePublicUserStats(stats : PublicUserStats) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update stats");
-    };
+    verifyUserAccess(caller);
     publicUserStats.add(caller, stats);
+    // Sync free spins based on highest streak
+    let totalEarned = stats.highestStreak / 10;
+    let existing = switch (userWheelData.get(caller)) {
+      case (null) { { totalSpinsEarned = 0; totalSpinsUsed = 0; earnedTitles = [] } };
+      case (?d) { d };
+    };
+    if (totalEarned > existing.totalSpinsEarned) {
+      userWheelData.add(caller, { existing with totalSpinsEarned = totalEarned });
+    };
   };
 
   public query ({ caller }) func getPublicStatsForUsers(users : [Principal]) : async [(Principal, PublicUserStats)] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can fetch stats");
-    };
-
+    verifyUserAccess(caller);
     users.filterMap(
       func(user) {
         switch (publicUserStats.get(user)) {
@@ -1212,5 +1460,255 @@ actor {
         };
       }
     );
+  };
+
+  public query ({ caller }) func getEarnedTitlesForUsers(users : [Principal]) : async [(Principal, [Text])] {
+    verifyUserAccess(caller);
+    users.filterMap(
+      func(user) {
+        switch (userWheelData.get(user)) {
+          case (null) { ?(user, []) };
+          case (?wd) { ?(user, wd.earnedTitles) };
+        };
+      }
+    );
+  };
+
+  /////////// WHEEL SPIN SYSTEM ///////////
+
+  public query ({ caller }) func getMyWheelData() : async WheelData {
+    verifyUserAccess(caller);
+    switch (userWheelData.get(caller)) {
+      case (null) { { totalSpinsEarned = 0; totalSpinsUsed = 0; earnedTitles = [] } };
+      case (?d) { d };
+    };
+  };
+
+  public shared ({ caller }) func spinWheel(wheelType : WheelType) : async Text {
+    verifyUserAccess(caller);
+    let existing = switch (userWheelData.get(caller)) {
+      case (null) { { totalSpinsEarned = 0; totalSpinsUsed = 0; earnedTitles = [] } };
+      case (?d) { d };
+    };
+    let available = if (existing.totalSpinsEarned >= existing.totalSpinsUsed) { existing.totalSpinsEarned - existing.totalSpinsUsed } else { 0 };
+    let cost : Nat = switch (wheelType) {
+      case (#common) { 1 };
+      case (#epic) { 2 };
+      case (#legendary) { 3 };
+    };
+    if (available < cost) {
+      Runtime.trap("Not enough free spins");
+    };
+    let pool : [Text] = switch (wheelType) {
+      case (#common) { commonTitles };
+      case (#epic) { epicTitles };
+      case (#legendary) { legendaryTitles };
+    };
+    let timeVal : Int = Time.now();
+    let timeNat : Nat = if (timeVal >= 0) { timeVal.toNat() } else { 0 };
+    let seed = (timeNat + existing.totalSpinsUsed) % pool.size();
+    let wonTitle = pool[seed];
+    var alreadyHas = false;
+    for (t in existing.earnedTitles.vals()) {
+      if (t == wonTitle) { alreadyHas := true };
+    };
+    let newTitles = if (alreadyHas) { existing.earnedTitles } else { existing.earnedTitles.concat([wonTitle]) };
+    userWheelData.add(caller, {
+      totalSpinsEarned = existing.totalSpinsEarned;
+      totalSpinsUsed = existing.totalSpinsUsed + cost;
+      earnedTitles = newTitles;
+    });
+    wonTitle;
+  };
+
+  public query ({ caller }) func getEarnedTitlesForUser(user : Principal) : async [Text] {
+    verifyUserAccess(caller);
+    switch (userWheelData.get(user)) {
+      case (null) { [] };
+      case (?d) { d.earnedTitles };
+    };
+  };
+
+  /////////// PREMIUM SECTION ///////////
+
+  // generate user's unique identity code from principal
+  func createIdentityCode(p : Principal) : Text {
+    let principalText = p.toText();
+    var sum = 0;
+    for (char in principalText.chars()) {
+      sum += char.toNat32().toNat();
+    };
+    let formattedSum = formatFourDigits(sum % 10000);
+    "GT-ABCD-" # formattedSum;
+  };
+
+  func formatFourDigits(n : Nat) : Text {
+    let firstDigit = (n / 1000).toText();
+    let secondDigit = ((n % 1000) / 100).toText();
+    let thirdDigit = ((n % 100) / 10).toText();
+    let fourthDigit = (n % 10).toText();
+    firstDigit # secondDigit # thirdDigit # fourthDigit;
+  };
+
+  public shared ({ caller }) func applyForPremium(displayName : Text) : async () {
+    verifyUserAccess(caller);
+    switch (premiumStatus.get(caller)) {
+      case (?existing) {
+        if (existing.applied) {
+          switch (existing.status) {
+            case (#pending) {
+              Runtime.trap("Premium already applied for");
+            };
+            case (#approved) {
+              Runtime.trap("Already approved for premium");
+            };
+            case (#rejected) {};
+          };
+        };
+      };
+      case (null) {};
+    };
+    let premium : PremiumStatus = {
+      status = #pending;
+      premiumCode = null;
+      applied = true;
+      displayName = ?displayName;
+      identityCode = createIdentityCode(caller);
+      appliedAt = Time.now();
+    };
+    premiumStatus.add(caller, premium);
+    premiumApplicationsVersion += 1;
+  };
+
+  public shared ({ caller }) func approvePremium(applicant : Principal) : async Text {
+    verifyAdminAccess(caller);
+    switch (premiumStatus.get(applicant)) {
+      case (null) { Runtime.trap("No application found") };
+      case (?existing) {
+        if (not existing.applied) {
+          Runtime.trap("Applicant never applied for premium");
+        };
+        let newPremiumCode = "GT-PRM" # createIdentityCode(applicant);
+        let premium : PremiumStatus = {
+          existing with
+          status = #approved;
+          premiumCode = ?newPremiumCode;
+          applied = true;
+        };
+        premiumStatus.add(applicant, premium);
+        premiumApplicationsVersion += 1;
+        newPremiumCode;
+      };
+    };
+  };
+
+  public shared ({ caller }) func rejectPremium(applicant : Principal) : async () {
+    verifyAdminAccess(caller);
+    switch (premiumStatus.get(applicant)) {
+      case (null) { Runtime.trap("No application found") };
+      case (?existing) {
+        if (not existing.applied) {
+          Runtime.trap("Applicant never applied for premium");
+        };
+        let premium : PremiumStatus = {
+          existing with status = #rejected
+        };
+        premiumStatus.add(applicant, premium);
+        premiumApplicationsVersion += 1;
+      };
+    };
+  };
+
+  public query ({ caller }) func getAllPremiumApplications() : async [(Principal, PremiumStatus)] {
+    verifyAdminAccess(caller);
+    premiumStatus.toArray();
+  };
+
+  public query ({ caller }) func getMyPremiumApplication() : async ?PremiumStatus {
+    verifyUserAccess(caller);
+    premiumStatus.get(caller);
+  };
+
+  public query ({ caller }) func isCallerPremium() : async Bool {
+    switch (isPremium.get(caller)) {
+      case (null) { false };
+      case (?status) { status };
+    };
+  };
+
+  public query ({ caller }) func getUniversalMasterCode() : async Text {
+    verifyAdminAccess(caller);
+    universalMasterCode;
+  };
+
+  public shared ({ caller }) func redeemPremiumCode(code : Text) : async Bool {
+    verifyUserAccess(caller);
+    if (code == universalMasterCode) {
+      isPremium.add(caller, true);
+      return true;
+    };
+    switch (premiumStatus.get(caller)) {
+      case (?premium) {
+        switch (premium.premiumCode) {
+          case (?userCode) {
+            if (code == userCode) {
+              isPremium.add(caller, true);
+              return true;
+            };
+          };
+          case (null) {};
+        };
+      };
+      case (null) {};
+    };
+    false;
+  };
+
+  public query ({ caller }) func getMyIdentityCode() : async Text {
+    verifyUserAccess(caller);
+    switch (premiumStatus.get(caller)) {
+      case (?existing) { existing.identityCode };
+      case (null) { createIdentityCode(caller) };
+    };
+  };
+
+  public query ({ caller }) func getUserIdentityCode(user : Principal) : async Text {
+    verifyAdminAccess(caller);
+    switch (premiumStatus.get(user)) {
+      case (?existing) { existing.identityCode };
+      case (null) { createIdentityCode(user) };
+    };
+  };
+
+  public query ({ caller }) func isUserPremium(user : Principal) : async Bool {
+    verifyAdminAccess(caller);
+    switch (isPremium.get(user)) {
+      case (null) { false };
+      case (?status) { status };
+    };
+  };
+
+  public query ({ caller }) func getPremiumApplicationsSummary() : async (Nat, [(Principal, PremiumStatus)]) {
+    verifyAdminAccess(caller);
+    (premiumApplicationsVersion, premiumStatus.toArray());
+  };
+
+  public query ({ caller }) func getPremiumStatus(user : Principal) : async ?PremiumStatus {
+    verifyAdminAccess(caller);
+    premiumStatus.get(user);
+  };
+
+  public shared ({ caller }) func requestPremiumStatus() : async () {
+    verifyUserAccess(caller);
+    let newPremium : PremiumStatus = {
+      status = #pending;
+      premiumCode = null;
+      applied = true;
+      displayName = null;
+      identityCode = createIdentityCode(caller);
+      appliedAt = Time.now();
+    };
+    premiumStatus.add(caller, newPremium);
+    premiumApplicationsVersion += 1;
   };
 };

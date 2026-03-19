@@ -13,19 +13,32 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useActor } from "@/hooks/useActor";
 import {
   useDuplicateRoutine,
   useDuplicateWeekRoutine,
 } from "@/hooks/useQueries";
 import { getTodayDateString } from "@/utils/taskCalculations";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { addDays, addWeeks, endOfWeek, format, startOfWeek } from "date-fns";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy, Crown, Lock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export function RoutinePage() {
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined);
   const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const { actor, isFetching } = useActor();
+  const { data: isPremium, isLoading: premiumLoading } = useQuery({
+    queryKey: ["isCallerPremium"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerPremium();
+    },
+    enabled: !!actor && !isFetching,
+  });
 
   const duplicateRoutine = useDuplicateRoutine();
   const duplicateWeek = useDuplicateWeekRoutine();
@@ -94,6 +107,54 @@ export function RoutinePage() {
   };
 
   const isPending = duplicateRoutine.isPending || duplicateWeek.isPending;
+
+  // Show loading state
+  if (premiumLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+      </div>
+    );
+  }
+
+  // Premium gate
+  if (!isPremium) {
+    return (
+      <div className="space-y-6 pb-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Routine Management
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            Copy your routines to save time and maintain consistency
+          </p>
+        </div>
+        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-amber-500/40 bg-amber-500/5 py-20 text-center gap-5">
+          <div className="flex items-center justify-center h-16 w-16 rounded-full bg-amber-500/10">
+            <Lock className="h-8 w-8 text-amber-500" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold flex items-center justify-center gap-2">
+              <Crown className="h-5 w-5 text-amber-500" />
+              Premium Feature
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-xs">
+              Routine Management is available for Premium members. Upgrade to
+              copy and repeat your routines effortlessly.
+            </p>
+          </div>
+          <Link to="/premium">
+            <button
+              type="button"
+              className="px-6 py-2.5 rounded-xl bg-amber-500 text-white font-semibold hover:bg-amber-600 transition-colors"
+            >
+              Unlock Premium
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-8">

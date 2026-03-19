@@ -21,6 +21,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useActor } from "@/hooks/useActor";
 import {
   useCreateTask,
   useTaskSuggestions,
@@ -35,7 +36,10 @@ import {
   calculateStreaks,
   getTodayDateString,
 } from "@/utils/taskCalculations";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { endOfWeek, format, startOfWeek } from "date-fns";
+import { Crown } from "lucide-react";
 import {
   Calendar as CalendarIcon,
   Plus,
@@ -48,7 +52,7 @@ import { toast } from "sonner";
 export function Dashboard() {
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [aiSuggestionsOpen, setAiSuggestionsOpen] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   const todayDate = getTodayDateString();
   const weekStart = format(
@@ -68,7 +72,20 @@ export function Dashboard() {
     isLoading: suggestionsLoading,
     refetch: refetchSuggestions,
   } = useTaskSuggestions();
+  const { actor, isFetching } = useActor();
   const createTaskMutation = useCreateTask();
+
+  const { data: isPremium } = useQuery({
+    queryKey: ["isCallerPremium"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerPremium();
+    },
+    enabled: !!actor && !isFetching,
+  });
+
+  const FREE_TASK_LIMIT = 10;
+  const isAtTaskLimit = !isPremium && todayTasks.length >= FREE_TASK_LIMIT;
 
   const dailySummary = calculateDailySummary(todayTasks, todayDate);
   const categoryScores = calculateCategoryScores(todayTasks, todayDate);
@@ -81,6 +98,10 @@ export function Dashboard() {
   };
 
   const handleNewTask = () => {
+    if (isAtTaskLimit) {
+      toast.error("Free plan limit reached (10/day). Upgrade to Premium.");
+      return;
+    }
     setEditingTask(null);
     setTaskDialogOpen(true);
   };
@@ -145,10 +166,29 @@ export function Dashboard() {
             {format(new Date(), "EEEE, MMMM d, yyyy")}
           </p>
         </div>
-        <Button onClick={handleNewTask} size="lg" className="gap-2">
-          <Plus className="h-5 w-5" />
-          Add Task
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAtTaskLimit && (
+            <Link to="/premium">
+              <span
+                className="text-xs text-amber-500 flex items-center gap-1 cursor-pointer"
+                data-ocid="dashboard.primary_button"
+              >
+                <Crown className="h-3 w-3" />
+                {todayTasks.length}/10 — Upgrade
+              </span>
+            </Link>
+          )}
+          <Button
+            onClick={handleNewTask}
+            size="lg"
+            className="gap-2"
+            disabled={isAtTaskLimit}
+            data-ocid="dashboard.secondary_button"
+          >
+            <Plus className="h-5 w-5" />
+            Add Task
+          </Button>
+        </div>
       </div>
 
       <WeeklyTaskCalendar />
@@ -214,14 +254,14 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* AI Task Suggestions Panel */}
-      <Collapsible open={aiSuggestionsOpen} onOpenChange={setAiSuggestionsOpen}>
+      {/* Suggestions Panel */}
+      <Collapsible open={suggestionsOpen} onOpenChange={setSuggestionsOpen}>
         <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <CardTitle>AI Task Suggestions</CardTitle>
+                <CardTitle>Suggestions</CardTitle>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -238,13 +278,13 @@ export function Dashboard() {
                 </Button>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm">
-                    {aiSuggestionsOpen ? "Hide" : "Show"}
+                    {suggestionsOpen ? "Hide" : "Show"}
                   </Button>
                 </CollapsibleTrigger>
               </div>
             </div>
             <CardDescription>
-              AI-powered task recommendations based on your routine and goals
+              Suggestions to get you started with
             </CardDescription>
           </CardHeader>
           <CollapsibleContent>

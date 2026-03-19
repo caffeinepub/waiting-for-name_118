@@ -1,13 +1,14 @@
 import type {
   Category,
   CategorySummary,
-  Date_,
   Priority,
   Task,
-  TaskId,
   TaskSuggestion,
   UserProfile,
 } from "@/backend";
+
+type Date_ = string;
+type TaskId = bigint;
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActor } from "./useActor";
 

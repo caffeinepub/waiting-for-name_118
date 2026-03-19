@@ -27,8 +27,18 @@ export const Priority = IDL.Variant({
   'high' : IDL.Null,
   'medium' : IDL.Null,
 });
-export const Date = IDL.Text;
-export const TaskId = IDL.Nat;
+export const PremiumStatus = IDL.Record({
+  'identityCode' : IDL.Text,
+  'status' : IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  }),
+  'appliedAt' : IDL.Int,
+  'displayName' : IDL.Opt(IDL.Text),
+  'applied' : IDL.Bool,
+  'premiumCode' : IDL.Opt(IDL.Text),
+});
 export const UserProfile = IDL.Record({
   'name' : IDL.Text,
   'preferences' : IDL.Opt(IDL.Text),
@@ -36,7 +46,7 @@ export const UserProfile = IDL.Record({
 export const CategorySummary = IDL.Record({
   'totalTasks' : IDL.Nat,
   'completedTasks' : IDL.Nat,
-  'date' : Date,
+  'date' : IDL.Text,
   'completionPercentage' : IDL.Float64,
   'category' : IDL.Text,
 });
@@ -55,8 +65,8 @@ export const TaskSuggestion = IDL.Record({
   'reason' : IDL.Text,
 });
 export const Task = IDL.Record({
-  'id' : TaskId,
-  'date' : Date,
+  'id' : IDL.Nat,
+  'date' : IDL.Text,
   'name' : IDL.Text,
   'createdAt' : IDL.Int,
   'completed' : IDL.Bool,
@@ -68,50 +78,80 @@ export const Task = IDL.Record({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
+  'applyForPremium' : IDL.Func([IDL.Text], [], []),
+  'approvePremium' : IDL.Func([IDL.Principal], [IDL.Text], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createTask' : IDL.Func(
-      [IDL.Text, Category, Priority, IDL.Nat, Date, IDL.Int],
-      [TaskId],
+      [IDL.Text, Category, Priority, IDL.Nat, IDL.Text, IDL.Int],
+      [IDL.Nat],
       [],
     ),
-  'deleteTask' : IDL.Func([TaskId], [], []),
+  'deleteTask' : IDL.Func([IDL.Nat], [], []),
+  'getAllPremiumApplications' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, PremiumStatus))],
+      ['query'],
+    ),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCategorySummariesInRange' : IDL.Func(
-      [Date, Date],
+      [IDL.Text, IDL.Text],
       [IDL.Vec(CategorySummary)],
       ['query'],
     ),
   'getCategorySummary' : IDL.Func(
-      [Date],
+      [IDL.Text],
       [IDL.Opt(CategorySummary)],
       ['query'],
     ),
   'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getMyIdentityCode' : IDL.Func([], [IDL.Text], ['query']),
+  'getMyPremiumApplication' : IDL.Func([], [IDL.Opt(PremiumStatus)], ['query']),
   'getOutgoingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getPremiumApplicationsSummary' : IDL.Func(
+      [],
+      [IDL.Nat, IDL.Vec(IDL.Tuple(IDL.Principal, PremiumStatus))],
+      ['query'],
+    ),
+  'getPremiumStatus' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(PremiumStatus)],
+      ['query'],
+    ),
   'getPublicStatsForUsers' : IDL.Func(
       [IDL.Vec(IDL.Principal)],
       [IDL.Vec(IDL.Tuple(IDL.Principal, PublicUserStats))],
       ['query'],
     ),
   'getTaskSuggestions' : IDL.Func([], [IDL.Vec(TaskSuggestion)], []),
-  'getTasksForDate' : IDL.Func([Date], [IDL.Vec(Task)], ['query']),
-  'getTasksForDateRange' : IDL.Func([Date, Date], [IDL.Vec(Task)], ['query']),
+  'getTasksForDate' : IDL.Func([IDL.Text], [IDL.Vec(Task)], ['query']),
+  'getTasksForDateRange' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Vec(Task)],
+      ['query'],
+    ),
+  'getUniversalMasterCode' : IDL.Func([], [IDL.Text], ['query']),
+  'getUserIdentityCode' : IDL.Func([IDL.Principal], [IDL.Text], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCallerPremium' : IDL.Func([], [IDL.Bool], ['query']),
+  'isUserPremium' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
+  'redeemPremiumCode' : IDL.Func([IDL.Text], [IDL.Bool], []),
+  'rejectPremium' : IDL.Func([IDL.Principal], [], []),
   'removeFriend' : IDL.Func([IDL.Principal], [], []),
+  'requestPremiumStatus' : IDL.Func([], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
   'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
-  'toggleTaskCompletion' : IDL.Func([TaskId], [], []),
+  'toggleTaskCompletion' : IDL.Func([IDL.Nat], [], []),
   'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),
   'updateTask' : IDL.Func(
-      [TaskId, IDL.Text, Category, Priority, IDL.Nat, Date],
+      [IDL.Nat, IDL.Text, Category, Priority, IDL.Nat, IDL.Text],
       [],
       [],
     ),
@@ -139,8 +179,18 @@ export const idlFactory = ({ IDL }) => {
     'high' : IDL.Null,
     'medium' : IDL.Null,
   });
-  const Date = IDL.Text;
-  const TaskId = IDL.Nat;
+  const PremiumStatus = IDL.Record({
+    'identityCode' : IDL.Text,
+    'status' : IDL.Variant({
+      'pending' : IDL.Null,
+      'approved' : IDL.Null,
+      'rejected' : IDL.Null,
+    }),
+    'appliedAt' : IDL.Int,
+    'displayName' : IDL.Opt(IDL.Text),
+    'applied' : IDL.Bool,
+    'premiumCode' : IDL.Opt(IDL.Text),
+  });
   const UserProfile = IDL.Record({
     'name' : IDL.Text,
     'preferences' : IDL.Opt(IDL.Text),
@@ -148,7 +198,7 @@ export const idlFactory = ({ IDL }) => {
   const CategorySummary = IDL.Record({
     'totalTasks' : IDL.Nat,
     'completedTasks' : IDL.Nat,
-    'date' : Date,
+    'date' : IDL.Text,
     'completionPercentage' : IDL.Float64,
     'category' : IDL.Text,
   });
@@ -167,8 +217,8 @@ export const idlFactory = ({ IDL }) => {
     'reason' : IDL.Text,
   });
   const Task = IDL.Record({
-    'id' : TaskId,
-    'date' : Date,
+    'id' : IDL.Nat,
+    'date' : IDL.Text,
     'name' : IDL.Text,
     'createdAt' : IDL.Int,
     'completed' : IDL.Bool,
@@ -180,50 +230,84 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
+    'applyForPremium' : IDL.Func([IDL.Text], [], []),
+    'approvePremium' : IDL.Func([IDL.Principal], [IDL.Text], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createTask' : IDL.Func(
-        [IDL.Text, Category, Priority, IDL.Nat, Date, IDL.Int],
-        [TaskId],
+        [IDL.Text, Category, Priority, IDL.Nat, IDL.Text, IDL.Int],
+        [IDL.Nat],
         [],
       ),
-    'deleteTask' : IDL.Func([TaskId], [], []),
+    'deleteTask' : IDL.Func([IDL.Nat], [], []),
+    'getAllPremiumApplications' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, PremiumStatus))],
+        ['query'],
+      ),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCategorySummariesInRange' : IDL.Func(
-        [Date, Date],
+        [IDL.Text, IDL.Text],
         [IDL.Vec(CategorySummary)],
         ['query'],
       ),
     'getCategorySummary' : IDL.Func(
-        [Date],
+        [IDL.Text],
         [IDL.Opt(CategorySummary)],
         ['query'],
       ),
     'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getMyIdentityCode' : IDL.Func([], [IDL.Text], ['query']),
+    'getMyPremiumApplication' : IDL.Func(
+        [],
+        [IDL.Opt(PremiumStatus)],
+        ['query'],
+      ),
     'getOutgoingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getPremiumApplicationsSummary' : IDL.Func(
+        [],
+        [IDL.Nat, IDL.Vec(IDL.Tuple(IDL.Principal, PremiumStatus))],
+        ['query'],
+      ),
+    'getPremiumStatus' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(PremiumStatus)],
+        ['query'],
+      ),
     'getPublicStatsForUsers' : IDL.Func(
         [IDL.Vec(IDL.Principal)],
         [IDL.Vec(IDL.Tuple(IDL.Principal, PublicUserStats))],
         ['query'],
       ),
     'getTaskSuggestions' : IDL.Func([], [IDL.Vec(TaskSuggestion)], []),
-    'getTasksForDate' : IDL.Func([Date], [IDL.Vec(Task)], ['query']),
-    'getTasksForDateRange' : IDL.Func([Date, Date], [IDL.Vec(Task)], ['query']),
+    'getTasksForDate' : IDL.Func([IDL.Text], [IDL.Vec(Task)], ['query']),
+    'getTasksForDateRange' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Vec(Task)],
+        ['query'],
+      ),
+    'getUniversalMasterCode' : IDL.Func([], [IDL.Text], ['query']),
+    'getUserIdentityCode' : IDL.Func([IDL.Principal], [IDL.Text], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCallerPremium' : IDL.Func([], [IDL.Bool], ['query']),
+    'isUserPremium' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
+    'redeemPremiumCode' : IDL.Func([IDL.Text], [IDL.Bool], []),
+    'rejectPremium' : IDL.Func([IDL.Principal], [], []),
     'removeFriend' : IDL.Func([IDL.Principal], [], []),
+    'requestPremiumStatus' : IDL.Func([], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
     'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
-    'toggleTaskCompletion' : IDL.Func([TaskId], [], []),
+    'toggleTaskCompletion' : IDL.Func([IDL.Nat], [], []),
     'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),
     'updateTask' : IDL.Func(
-        [TaskId, IDL.Text, Category, Priority, IDL.Nat, Date],
+        [IDL.Nat, IDL.Text, Category, Priority, IDL.Nat, IDL.Text],
         [],
         [],
       ),

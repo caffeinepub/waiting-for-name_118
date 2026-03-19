@@ -1,4 +1,5 @@
 import type { Category } from "@/backend";
+import { PremiumGate } from "@/components/PremiumGate";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -41,7 +42,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export function HistoryPage() {
+function HistoryPageInner() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -408,5 +409,13 @@ export function HistoryPage() {
         </Dialog>
       )}
     </div>
+  );
+}
+
+export function HistoryPage() {
+  return (
+    <PremiumGate featureName="History">
+      <HistoryPageInner />
+    </PremiumGate>
   );
 }

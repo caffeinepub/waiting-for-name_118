@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -23,6 +24,7 @@ import {
   Loader2,
   Mail,
   Medal,
+  RefreshCw,
   Trophy,
   UserPlus,
   Users,
@@ -32,9 +34,84 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+const LEGENDARY_TITLES = [
+  "Consistency God",
+  "Elite Grinder",
+  "Unstoppable Force",
+  "Legend",
+  "Titan of Grind",
+  "Supreme Achiever",
+  "The Relentless",
+  "Apex Performer",
+  "Grind Master",
+  "Immortal Grinder",
+];
+
+const EPIC_TITLES = [
+  "Streak Machine",
+  "Dominator",
+  "Long Time Fan",
+  "New Blood",
+  "Task Master",
+  "Focus Warrior",
+  "Productivity Pro",
+  "Challenge Accepted",
+  "The Grinder",
+  "Momentum Builder",
+];
+
+function getTitleTier(title: string): "legendary" | "epic" | "common" {
+  if (LEGENDARY_TITLES.includes(title)) return "legendary";
+  if (EPIC_TITLES.includes(title)) return "epic";
+  return "common";
+}
+
+function EarnedTitleBadge({ title }: { title: string }) {
+  const tier = getTitleTier(title);
+
+  if (tier === "legendary") {
+    return (
+      <span
+        className="text-xs px-1.5 py-0.5 rounded font-bold w-fit inline-block"
+        style={{
+          background:
+            "linear-gradient(90deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0000)",
+          backgroundSize: "200% 100%",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+          animation: "rainbowSlide 2s linear infinite",
+        }}
+      >
+        👑 {title}
+      </span>
+    );
+  }
+
+  if (tier === "epic") {
+    return (
+      <span
+        className="text-xs px-1.5 py-0.5 rounded font-bold w-fit inline-block"
+        style={{
+          color: "white",
+          animation: "epicFlash 1s ease-in-out infinite",
+        }}
+      >
+        ⚡ {title}
+      </span>
+    );
+  }
+
+  return (
+    <span className="text-xs px-1.5 py-0.5 rounded font-semibold w-fit inline-block text-red-400">
+      ⭐ {title}
+    </span>
+  );
+}
+
 interface RankedEntry {
   principal: Principal;
-  stats: PublicUserStats;
+  stats: PublicUserStats & { earnedTitles: string[] };
   rank: number;
   isSelf: boolean;
 }
@@ -61,39 +138,33 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-function getPlayerTitle(stats: PublicUserStats): {
-  title: string;
-  color: string;
-} {
-  const currentStreak = Number(stats.currentStreak);
-  const highestStreak = Number(stats.highestStreak);
-  const totalCompletions = Number(stats.totalTaskCompletions);
+function getBestTitle(earnedTitles: string[]): string | null {
+  if (!earnedTitles || earnedTitles.length === 0) return null;
+  const legendary = earnedTitles.find((t) => LEGENDARY_TITLES.includes(t));
+  if (legendary) return legendary;
+  const epic = earnedTitles.find((t) => EPIC_TITLES.includes(t));
+  if (epic) return epic;
+  return earnedTitles[0];
+}
 
-  if (highestStreak >= 100 || totalCompletions >= 1000) {
-    return { title: "Legend", color: "text-yellow-300 bg-yellow-300/10" };
-  }
-  if (currentStreak >= 50 || highestStreak >= 50) {
-    return { title: "Unstoppable", color: "text-red-400 bg-red-400/10" };
-  }
-  if (currentStreak >= 30) {
-    return {
-      title: "Consistency God",
-      color: "text-purple-400 bg-purple-400/10",
-    };
-  }
-  if (totalCompletions >= 200 && currentStreak >= 14) {
-    return { title: "Dominator", color: "text-orange-400 bg-orange-400/10" };
-  }
-  if (highestStreak >= 30) {
-    return { title: "Long Time Fan", color: "text-blue-400 bg-blue-400/10" };
-  }
-  if (currentStreak >= 7 || highestStreak >= 7) {
-    return { title: "Streak Machine", color: "text-green-400 bg-green-400/10" };
-  }
-  if (totalCompletions >= 25 || currentStreak >= 5) {
-    return { title: "Rising Grinder", color: "text-teal-400 bg-teal-400/10" };
-  }
-  return { title: "New Blood", color: "text-muted-foreground bg-muted/50" };
+function LeaderboardSkeleton() {
+  return (
+    <div className="space-y-3" data-ocid="friends.loading_state">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-3 p-3">
+          <Skeleton className="h-6 w-6 rounded" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-6 w-14" />
+          <Skeleton className="h-6 w-14" />
+          <Skeleton className="h-6 w-14" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function FriendsPage() {
@@ -123,60 +194,58 @@ export function FriendsPage() {
 
         const completedTasks = tasks.filter((t) => t.completed);
         const totalCompletions = completedTasks.length;
-        const level = Math.floor(totalCompletions / 50) + 1;
-
-        // Calculate current streak: consecutive days with >= 1 completed task up to today
-        const completedDates = new Set(completedTasks.map((t) => t.date));
+        const allDates = [...new Set(completedTasks.map((t) => t.date))].sort();
         let currentStreak = 0;
-        const checkDate = new Date(today);
-        while (true) {
-          const dateStr = checkDate.toISOString().split("T")[0];
-          if (completedDates.has(dateStr)) {
-            currentStreak++;
-            checkDate.setDate(checkDate.getDate() - 1);
+        let highestStreak = 0;
+        let streak = 0;
+
+        for (let i = allDates.length - 1; i >= 0; i--) {
+          const d = new Date(allDates[i]);
+          const diff = Math.floor(
+            (today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24),
+          );
+          if (diff === 0 || diff === 1) {
+            streak++;
           } else {
             break;
           }
         }
-
-        // Calculate highest streak from historical data
-        const allDates = [...completedDates].sort();
-        let maxStreak = 0;
+        currentStreak = streak;
         let tempStreak = 0;
-        let prevDate: Date | null = null;
-        for (const dateStr of allDates) {
-          const d = new Date(dateStr);
-          if (prevDate) {
-            const diff =
-              (d.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+        for (let i = 0; i < allDates.length; i++) {
+          if (i === 0) {
+            tempStreak = 1;
+          } else {
+            const prev = new Date(allDates[i - 1]);
+            const curr = new Date(allDates[i]);
+            const diff = Math.floor(
+              (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24),
+            );
             if (diff === 1) {
               tempStreak++;
             } else {
               tempStreak = 1;
             }
-          } else {
-            tempStreak = 1;
           }
-          maxStreak = Math.max(maxStreak, tempStreak);
-          prevDate = d;
+          highestStreak = Math.max(highestStreak, tempStreak);
         }
-        const highestStreak = Math.max(maxStreak, currentStreak);
+        const level = Math.floor(totalCompletions / 20) + 1;
+        const displayNameVal = profile?.name ?? "";
 
         await actor.updatePublicUserStats({
-          displayName: profile?.name ?? "",
-          totalTaskCompletions: BigInt(totalCompletions),
-          level: BigInt(level),
+          displayName: displayNameVal,
           currentStreak: BigInt(currentStreak),
           highestStreak: BigInt(highestStreak),
+          totalTaskCompletions: BigInt(totalCompletions),
+          level: BigInt(level),
         });
-      } catch (e) {
-        console.error("Failed to sync public stats", e);
+      } catch (_e) {
+        // silent
       }
     };
     syncStats();
   }, [actor, callerPrincipal]);
 
-  // Friends list
   const { data: friends = [], isLoading: friendsLoading } = useQuery<
     Principal[]
   >({
@@ -189,28 +258,42 @@ export function FriendsPage() {
     staleTime: 30000,
   });
 
-  // Leaderboard stats
-  const { data: leaderboard = [], isLoading: leaderboardLoading } = useQuery<
-    RankedEntry[]
-  >({
+  const {
+    data: leaderboard = [],
+    isLoading: leaderboardLoading,
+    isError: leaderboardError,
+    refetch: refetchLeaderboard,
+  } = useQuery<RankedEntry[]>({
     queryKey: [
       "friendLeaderboard",
-      friends.map((f) => f.toString()),
+      friends.map((p) => p.toString()),
       callerPrincipal?.toString(),
     ],
     queryFn: async () => {
       if (!actor || !callerPrincipal) return [];
       const allUsers = [...friends, callerPrincipal];
+
       const statsArr = await actor.getPublicStatsForUsers(allUsers);
+
+      // Safely fetch titles -- fallback to empty map if it fails
+      let titlesMap = new Map<string, string[]>();
+      try {
+        const titlesArr = await actor.getEarnedTitlesForUsers(allUsers);
+        titlesMap = new Map(titlesArr.map(([p, t]) => [p.toString(), t]));
+      } catch (_err) {
+        // titles unavailable, continue without them
+      }
 
       const entries: RankedEntry[] = statsArr.map(([principal, stats]) => ({
         principal,
-        stats,
+        stats: {
+          ...stats,
+          earnedTitles: titlesMap.get(principal.toString()) ?? [],
+        },
         rank: 0,
         isSelf: principal.toString() === callerPrincipal.toString(),
       }));
 
-      // Sort by currentStreak desc, then highestStreak, then totalCompletions
       entries.sort((a, b) => {
         const streakDiff =
           Number(b.stats.currentStreak) - Number(a.stats.currentStreak);
@@ -228,9 +311,9 @@ export function FriendsPage() {
     },
     enabled: !!actor && !actorFetching && !!callerPrincipal,
     staleTime: 30000,
+    retry: 2,
   });
 
-  // Incoming requests
   const { data: incomingRequests = [], isLoading: incomingLoading } = useQuery<
     Principal[]
   >({
@@ -243,7 +326,6 @@ export function FriendsPage() {
     staleTime: 15000,
   });
 
-  // Incoming request stats (for showing names)
   const { data: incomingStats = new Map() } = useQuery({
     queryKey: [
       "incomingRequestStats",
@@ -258,7 +340,6 @@ export function FriendsPage() {
     enabled: !!actor && incomingRequests.length > 0,
   });
 
-  // Outgoing requests
   const { data: outgoingRequests = [], isLoading: outgoingLoading } = useQuery<
     Principal[]
   >({
@@ -271,7 +352,6 @@ export function FriendsPage() {
     staleTime: 15000,
   });
 
-  // Outgoing request stats (for showing names)
   const { data: outgoingStats = new Map() } = useQuery({
     queryKey: [
       "outgoingRequestStats",
@@ -335,423 +415,466 @@ export function FriendsPage() {
 
   const isLoading = friendsLoading || leaderboardLoading;
 
+  const hasFriends = friends.length > 0;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="space-y-6"
-    >
-      {/* Page Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10">
-          <Users className="h-5 w-5 text-primary" />
+    <>
+      <style>{`
+        @keyframes rainbowSlide {
+          0% { background-position: 0% 50%; }
+          100% { background-position: 200% 50%; }
+        }
+        @keyframes epicFlash {
+          0%, 100% { opacity: 1; color: white; }
+          50% { opacity: 0.4; color: #e0e0ff; }
+        }
+      `}</style>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="space-y-6"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-primary/10">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Friends</h1>
+            <p className="text-sm text-muted-foreground">
+              Compare streaks and compete with your crew
+            </p>
+          </div>
+          {incomingRequests.length > 0 && (
+            <Badge variant="destructive" className="ml-auto">
+              {incomingRequests.length} pending
+            </Badge>
+          )}
         </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Friends</h1>
-          <p className="text-sm text-muted-foreground">
-            Compare streaks and compete with your crew
-          </p>
-        </div>
-        {incomingRequests.length > 0 && (
-          <Badge variant="destructive" className="ml-auto">
-            {incomingRequests.length} pending
-          </Badge>
-        )}
-      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList
-          className="grid w-full grid-cols-3 mb-6"
-          data-ocid="friends.tab"
-        >
-          <TabsTrigger value="leaderboard" data-ocid="friends.leaderboard.tab">
-            <Trophy className="h-4 w-4 mr-2" />
-            Leaderboard
-          </TabsTrigger>
-          <TabsTrigger value="add" data-ocid="friends.add.tab">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add Friend
-          </TabsTrigger>
-          <TabsTrigger value="requests" data-ocid="friends.requests.tab">
-            <Mail className="h-4 w-4 mr-2" />
-            Requests
-            {incomingRequests.length > 0 && (
-              <Badge
-                variant="destructive"
-                className="ml-2 h-5 min-w-5 text-xs px-1"
-              >
-                {incomingRequests.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* LEADERBOARD TAB */}
-        <TabsContent value="leaderboard">
-          <Card data-ocid="friends.leaderboard.card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Trophy className="h-5 w-5 text-yellow-400" />
-                Group Rankings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div
-                  className="flex items-center justify-center py-12"
-                  data-ocid="friends.loading_state"
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList
+            className="grid w-full grid-cols-3 mb-6"
+            data-ocid="friends.tab"
+          >
+            <TabsTrigger
+              value="leaderboard"
+              data-ocid="friends.leaderboard.tab"
+            >
+              <Trophy className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Leaderboard</span>
+              <span className="xs:hidden">Board</span>
+            </TabsTrigger>
+            <TabsTrigger value="add" data-ocid="friends.add.tab">
+              <UserPlus className="h-4 w-4 mr-1 sm:mr-2" />
+              Add
+            </TabsTrigger>
+            <TabsTrigger value="requests" data-ocid="friends.requests.tab">
+              <Mail className="h-4 w-4 mr-1 sm:mr-2" />
+              Requests
+              {incomingRequests.length > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="ml-2 h-5 min-w-5 text-xs px-1"
                 >
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <span className="ml-3 text-muted-foreground">
-                    Loading rankings...
-                  </span>
-                </div>
-              ) : leaderboard.length === 0 ? (
-                <div
-                  className="text-center py-12"
-                  data-ocid="friends.empty_state"
-                >
-                  <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-muted-foreground font-medium">
-                    No friends yet
-                  </p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">
-                    Add friends to see how you rank against each other
-                  </p>
-                </div>
-              ) : (
-                <div
-                  className="overflow-x-auto"
-                  data-ocid="friends.leaderboard.table"
-                >
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-border/50">
-                        <TableHead className="w-12">Rank</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead className="text-center">Level</TableHead>
-                        <TableHead className="text-center">Streak 🔥</TableHead>
-                        <TableHead className="text-center">
-                          Best Streak
-                        </TableHead>
-                        <TableHead className="text-center">
-                          Completions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <AnimatePresence>
-                        {leaderboard.map((entry, idx) => {
-                          const titleInfo = getPlayerTitle(entry.stats);
-                          return (
-                            <motion.tr
-                              key={entry.principal.toString()}
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: idx * 0.05 }}
-                              data-ocid={`friends.leaderboard.item.${idx + 1}`}
-                              className={`border-border/50 transition-colors ${
-                                entry.isSelf
-                                  ? "bg-primary/10 hover:bg-primary/15"
-                                  : "hover:bg-accent/50"
-                              }`}
-                            >
-                              <TableCell className="font-medium">
-                                <div className="flex items-center justify-center">
-                                  <RankBadge rank={entry.rank} />
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                      entry.rank === 1
-                                        ? "bg-yellow-400/20 text-yellow-400"
-                                        : entry.rank === 2
-                                          ? "bg-slate-400/20 text-slate-400"
-                                          : entry.rank === 3
-                                            ? "bg-amber-600/20 text-amber-500"
-                                            : "bg-accent text-accent-foreground"
-                                    }`}
-                                  >
-                                    {displayName(entry.principal, entry.stats)
-                                      .slice(0, 2)
-                                      .toUpperCase()}
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-medium text-sm">
-                                        {displayName(
-                                          entry.principal,
-                                          entry.stats,
-                                        )}
-                                      </span>
-                                      {entry.isSelf && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs py-0 h-4"
-                                        >
-                                          You
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    <span
-                                      className={`text-xs px-1.5 py-0.5 rounded font-semibold w-fit ${
-                                        titleInfo.color
-                                      }`}
-                                    >
-                                      {titleInfo.title}
-                                    </span>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="outline" className="font-mono">
-                                  Lv.{Number(entry.stats.level)}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <span className="font-bold text-orange-400">
-                                  {Number(entry.stats.currentStreak)} 🔥
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <span className="text-muted-foreground font-mono">
-                                  {Number(entry.stats.highestStreak)} 🔥
-                                </span>
-                              </TableCell>
-                              <TableCell className="text-center">
-                                <span className="font-mono text-sm">
-                                  {Number(
-                                    entry.stats.totalTaskCompletions,
-                                  ).toLocaleString()}
-                                </span>
-                              </TableCell>
-                            </motion.tr>
-                          );
-                        })}
-                      </AnimatePresence>
-                    </TableBody>
-                  </Table>
-                </div>
+                  {incomingRequests.length}
+                </Badge>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* ADD FRIEND TAB */}
-        <TabsContent value="add">
-          <div className="space-y-4">
-            <Card data-ocid="friends.add.card">
+          {/* LEADERBOARD TAB */}
+          <TabsContent value="leaderboard">
+            <Card data-ocid="friends.leaderboard.card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <UserPlus className="h-5 w-5 text-primary" />
-                  Add a Friend
+                  <Trophy className="h-5 w-5 text-yellow-400" />
+                  Group Rankings
+                  {!hasFriends && !isLoading && (
+                    <Badge
+                      variant="outline"
+                      className="ml-auto text-xs font-normal"
+                    >
+                      Just You
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Enter your friend's Principal ID to send them a friend
-                  request.
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="aaaaa-bbbbb-ccccc-ddddd-eee"
-                    value={addInput}
-                    onChange={(e) => setAddInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSendRequest()}
-                    className="font-mono text-sm"
-                    data-ocid="friends.add.input"
-                  />
-                  <Button
-                    onClick={handleSendRequest}
-                    disabled={sendRequestMutation.isPending || !addInput.trim()}
-                    data-ocid="friends.add.submit_button"
+              <CardContent>
+                {isLoading ? (
+                  <LeaderboardSkeleton />
+                ) : leaderboardError ? (
+                  <div
+                    className="text-center py-12"
+                    data-ocid="friends.leaderboard.error_state"
                   >
-                    {sendRequestMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <UserPlus className="h-4 w-4" />
-                    )}
-                    <span className="ml-2">Send</span>
-                  </Button>
-                </div>
-
-                {/* Your principal */}
-                {callerPrincipal && (
-                  <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      Your Principal ID (share this with friends):
+                    <p className="text-muted-foreground font-medium mb-3">
+                      Failed to load rankings
                     </p>
-                    <p className="font-mono text-xs break-all text-foreground/80">
-                      {callerPrincipal.toString()}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => refetchLeaderboard()}
+                      data-ocid="friends.leaderboard.retry.button"
+                    >
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </Button>
+                  </div>
+                ) : leaderboard.length === 0 ? (
+                  <div
+                    className="text-center py-12"
+                    data-ocid="friends.empty_state"
+                  >
+                    <Users className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
+                    <p className="text-muted-foreground font-medium">
+                      Your stats are loading
                     </p>
+                    <p className="text-sm text-muted-foreground/70 mt-1">
+                      Add friends to compete on the leaderboard
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    className="overflow-x-auto -mx-2 px-2"
+                    data-ocid="friends.leaderboard.table"
+                  >
+                    <Table className="min-w-[540px]">
+                      <TableHeader>
+                        <TableRow className="border-border/50">
+                          <TableHead className="w-10">Rank</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead className="text-center w-16">
+                            Lv.
+                          </TableHead>
+                          <TableHead className="text-center w-20">
+                            Streak 🔥
+                          </TableHead>
+                          <TableHead className="text-center w-20">
+                            Best
+                          </TableHead>
+                          <TableHead className="text-center w-24">
+                            Done
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <AnimatePresence>
+                          {leaderboard.map((entry, idx) => {
+                            const bestTitle = getBestTitle(
+                              entry.stats.earnedTitles ?? [],
+                            );
+                            return (
+                              <motion.tr
+                                key={entry.principal.toString()}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                data-ocid={`friends.leaderboard.item.${idx + 1}`}
+                                className={`border-border/50 transition-colors ${
+                                  entry.isSelf
+                                    ? "bg-primary/10 hover:bg-primary/15"
+                                    : "hover:bg-accent/50"
+                                }`}
+                              >
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center justify-center">
+                                    <RankBadge rank={entry.rank} />
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                        entry.rank === 1
+                                          ? "bg-yellow-400/20 text-yellow-400"
+                                          : entry.rank === 2
+                                            ? "bg-slate-400/20 text-slate-400"
+                                            : entry.rank === 3
+                                              ? "bg-amber-600/20 text-amber-500"
+                                              : "bg-accent text-accent-foreground"
+                                      }`}
+                                    >
+                                      {displayName(entry.principal, entry.stats)
+                                        .slice(0, 2)
+                                        .toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="font-medium text-sm truncate max-w-[100px] sm:max-w-none">
+                                          {displayName(
+                                            entry.principal,
+                                            entry.stats,
+                                          )}
+                                        </span>
+                                        {entry.isSelf && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-xs py-0 h-4 shrink-0"
+                                          >
+                                            You
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {bestTitle && (
+                                        <EarnedTitleBadge title={bestTitle} />
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <Badge
+                                    variant="outline"
+                                    className="font-mono text-xs"
+                                  >
+                                    Lv.{Number(entry.stats.level)}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className="font-bold text-orange-400 text-sm">
+                                    {Number(entry.stats.currentStreak)}🔥
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className="text-muted-foreground font-mono text-sm">
+                                    {Number(entry.stats.highestStreak)}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <span className="font-mono text-sm">
+                                    {Number(
+                                      entry.stats.totalTaskCompletions,
+                                    ).toLocaleString()}
+                                  </span>
+                                </TableCell>
+                              </motion.tr>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Outgoing requests */}
-            {(outgoingRequests.length > 0 || outgoingLoading) && (
-              <Card data-ocid="friends.outgoing.card">
+          {/* ADD FRIEND TAB */}
+          <TabsContent value="add">
+            <div className="space-y-4">
+              <Card data-ocid="friends.add.card">
                 <CardHeader>
-                  <CardTitle className="text-base text-muted-foreground">
-                    Sent Requests
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <UserPlus className="h-5 w-5 text-primary" />
+                    Add a Friend
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {outgoingLoading ? (
-                    <div
-                      className="flex items-center gap-2 text-muted-foreground"
-                      data-ocid="friends.outgoing.loading_state"
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Enter your friend's Principal ID to send them a friend
+                    request.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      placeholder="aaaaa-bbbbb-ccccc-ddddd-eee"
+                      value={addInput}
+                      onChange={(e) => setAddInput(e.target.value)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && handleSendRequest()
+                      }
+                      className="font-mono text-sm"
+                      data-ocid="friends.add.input"
+                    />
+                    <Button
+                      onClick={handleSendRequest}
+                      disabled={
+                        sendRequestMutation.isPending || !addInput.trim()
+                      }
+                      className="shrink-0"
+                      data-ocid="friends.add.submit_button"
                     >
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Loading...</span>
-                    </div>
-                  ) : (
-                    <div
-                      className="space-y-2"
-                      data-ocid="friends.outgoing.list"
-                    >
-                      {outgoingRequests.map((p, idx) => {
-                        const senderStats = outgoingStats.get(p.toString());
-                        const name = senderStats?.displayName?.trim()
-                          ? senderStats.displayName
-                          : truncatePrincipal(p);
-                        return (
-                          <div
-                            key={p.toString()}
-                            data-ocid={`friends.outgoing.item.${idx + 1}`}
-                            className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 px-3 py-2"
-                          >
-                            <div>
-                              <p className="text-sm font-medium">{name}</p>
-                              <p className="font-mono text-xs text-muted-foreground">
-                                {truncatePrincipal(p)}
-                              </p>
-                            </div>
-                            <Badge variant="secondary" className="text-xs">
-                              Pending
-                            </Badge>
-                          </div>
-                        );
-                      })}
+                      {sendRequestMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UserPlus className="h-4 w-4" />
+                      )}
+                      <span className="ml-2">Send</span>
+                    </Button>
+                  </div>
+
+                  {callerPrincipal && (
+                    <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Your Principal ID (share this with friends):
+                      </p>
+                      <p className="font-mono text-xs break-all text-foreground/80">
+                        {callerPrincipal.toString()}
+                      </p>
                     </div>
                   )}
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </TabsContent>
 
-        {/* REQUESTS TAB */}
-        <TabsContent value="requests">
-          <Card data-ocid="friends.requests.card">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Mail className="h-5 w-5 text-primary" />
-                Friend Requests
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {incomingLoading ? (
-                <div
-                  className="flex items-center gap-2 text-muted-foreground"
-                  data-ocid="friends.requests.loading_state"
-                >
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Loading requests...</span>
-                </div>
-              ) : incomingRequests.length === 0 ? (
-                <div
-                  className="text-center py-10"
-                  data-ocid="friends.requests.empty_state"
-                >
-                  <Mail className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                  <p className="text-muted-foreground">No pending requests</p>
-                  <p className="text-sm text-muted-foreground/60 mt-1">
-                    When someone sends you a request, it'll appear here
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3" data-ocid="friends.requests.list">
-                  <AnimatePresence>
-                    {incomingRequests.map((p, idx) => {
-                      const senderStats = incomingStats.get(p.toString());
-                      const senderName = senderStats?.displayName?.trim()
-                        ? senderStats.displayName
-                        : truncatePrincipal(p);
-                      return (
-                        <motion.div
-                          key={p.toString()}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          data-ocid={`friends.requests.item.${idx + 1}`}
-                          className="flex items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 gap-3"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                              <Users className="h-4 w-4 text-primary" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">
-                                {senderName}
-                              </p>
-                              <p className="font-mono text-xs text-muted-foreground">
-                                {truncatePrincipal(p)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2 shrink-0">
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => acceptMutation.mutate(p)}
-                              disabled={
-                                acceptMutation.isPending ||
-                                declineMutation.isPending
-                              }
-                              data-ocid={`friends.requests.confirm_button.${idx + 1}`}
-                              className="h-8"
+              {(outgoingRequests.length > 0 || outgoingLoading) && (
+                <Card data-ocid="friends.outgoing.card">
+                  <CardHeader>
+                    <CardTitle className="text-base text-muted-foreground">
+                      Sent Requests
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {outgoingLoading ? (
+                      <div
+                        className="flex items-center gap-2 text-muted-foreground"
+                        data-ocid="friends.outgoing.loading_state"
+                      >
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Loading...</span>
+                      </div>
+                    ) : (
+                      <div
+                        className="space-y-2"
+                        data-ocid="friends.outgoing.list"
+                      >
+                        {outgoingRequests.map((p, idx) => {
+                          const senderStats = outgoingStats.get(p.toString());
+                          const name = senderStats?.displayName?.trim()
+                            ? senderStats.displayName
+                            : truncatePrincipal(p);
+                          return (
+                            <div
+                              key={p.toString()}
+                              data-ocid={`friends.outgoing.item.${idx + 1}`}
+                              className="flex items-center justify-between rounded-lg border border-border/50 bg-muted/20 px-3 py-2"
                             >
-                              {acceptMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Check className="h-3 w-3" />
-                              )}
-                              <span className="ml-1">Accept</span>
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => declineMutation.mutate(p)}
-                              disabled={
-                                acceptMutation.isPending ||
-                                declineMutation.isPending
-                              }
-                              data-ocid={`friends.requests.cancel_button.${idx + 1}`}
-                              className="h-8"
-                            >
-                              {declineMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <X className="h-3 w-3" />
-                              )}
-                              <span className="ml-1">Decline</span>
-                            </Button>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </AnimatePresence>
-                </div>
+                              <div>
+                                <p className="text-sm font-medium">{name}</p>
+                                <p className="font-mono text-xs text-muted-foreground">
+                                  {truncatePrincipal(p)}
+                                </p>
+                              </div>
+                              <Badge variant="secondary" className="text-xs">
+                                Pending
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </motion.div>
+            </div>
+          </TabsContent>
+
+          {/* REQUESTS TAB */}
+          <TabsContent value="requests">
+            <Card data-ocid="friends.requests.card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Mail className="h-5 w-5 text-primary" />
+                  Friend Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {incomingLoading ? (
+                  <div
+                    className="flex items-center gap-2 text-muted-foreground"
+                    data-ocid="friends.requests.loading_state"
+                  >
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading requests...</span>
+                  </div>
+                ) : incomingRequests.length === 0 ? (
+                  <div
+                    className="text-center py-10"
+                    data-ocid="friends.requests.empty_state"
+                  >
+                    <Mail className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                    <p className="text-muted-foreground">No pending requests</p>
+                    <p className="text-sm text-muted-foreground/60 mt-1">
+                      When someone sends you a request, it'll appear here
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3" data-ocid="friends.requests.list">
+                    <AnimatePresence>
+                      {incomingRequests.map((p, idx) => {
+                        const senderStats = incomingStats.get(p.toString());
+                        const senderName = senderStats?.displayName?.trim()
+                          ? senderStats.displayName
+                          : truncatePrincipal(p);
+                        return (
+                          <motion.div
+                            key={p.toString()}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            data-ocid={`friends.requests.item.${idx + 1}`}
+                            className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-xl border border-border/50 bg-card px-4 py-3 gap-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <Users className="h-4 w-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {senderName}
+                                </p>
+                                <p className="font-mono text-xs text-muted-foreground">
+                                  {truncatePrincipal(p)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 w-full sm:w-auto">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => acceptMutation.mutate(p)}
+                                disabled={
+                                  acceptMutation.isPending ||
+                                  declineMutation.isPending
+                                }
+                                data-ocid={`friends.requests.confirm_button.${idx + 1}`}
+                                className="h-8 flex-1 sm:flex-none"
+                              >
+                                {acceptMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Check className="h-3 w-3" />
+                                )}
+                                <span className="ml-1">Accept</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => declineMutation.mutate(p)}
+                                disabled={
+                                  acceptMutation.isPending ||
+                                  declineMutation.isPending
+                                }
+                                data-ocid={`friends.requests.cancel_button.${idx + 1}`}
+                                className="h-8 flex-1 sm:flex-none"
+                              >
+                                {declineMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <X className="h-3 w-3" />
+                                )}
+                                <span className="ml-1">Decline</span>
+                              </Button>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </motion.div>
+    </>
   );
 }
