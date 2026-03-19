@@ -40,6 +40,13 @@ export const CategorySummary = IDL.Record({
   'completionPercentage' : IDL.Float64,
   'category' : IDL.Text,
 });
+export const PublicUserStats = IDL.Record({
+  'displayName' : IDL.Text,
+  'highestStreak' : IDL.Nat,
+  'level' : IDL.Nat,
+  'currentStreak' : IDL.Nat,
+  'totalTaskCompletions' : IDL.Nat,
+});
 export const TaskSuggestion = IDL.Record({
   'name' : IDL.Text,
   'category' : Category,
@@ -60,6 +67,7 @@ export const Task = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'createTask' : IDL.Func(
       [IDL.Text, Category, Priority, IDL.Nat, Date, IDL.Int],
@@ -79,7 +87,15 @@ export const idlService = IDL.Service({
       [IDL.Opt(CategorySummary)],
       ['query'],
     ),
-  'getTaskSuggestions' : IDL.Func([], [IDL.Vec(TaskSuggestion)], ['query']),
+  'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getOutgoingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getPublicStatsForUsers' : IDL.Func(
+      [IDL.Vec(IDL.Principal)],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, PublicUserStats))],
+      ['query'],
+    ),
+  'getTaskSuggestions' : IDL.Func([], [IDL.Vec(TaskSuggestion)], []),
   'getTasksForDate' : IDL.Func([Date], [IDL.Vec(Task)], ['query']),
   'getTasksForDateRange' : IDL.Func([Date, Date], [IDL.Vec(Task)], ['query']),
   'getUserProfile' : IDL.Func(
@@ -88,9 +104,12 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'removeFriend' : IDL.Func([IDL.Principal], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
+  'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
   'toggleTaskCompletion' : IDL.Func([TaskId], [], []),
+  'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),
   'updateTask' : IDL.Func(
       [TaskId, IDL.Text, Category, Priority, IDL.Nat, Date],
       [],
@@ -133,6 +152,13 @@ export const idlFactory = ({ IDL }) => {
     'completionPercentage' : IDL.Float64,
     'category' : IDL.Text,
   });
+  const PublicUserStats = IDL.Record({
+    'displayName' : IDL.Text,
+    'highestStreak' : IDL.Nat,
+    'level' : IDL.Nat,
+    'currentStreak' : IDL.Nat,
+    'totalTaskCompletions' : IDL.Nat,
+  });
   const TaskSuggestion = IDL.Record({
     'name' : IDL.Text,
     'category' : Category,
@@ -153,6 +179,7 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'createTask' : IDL.Func(
         [IDL.Text, Category, Priority, IDL.Nat, Date, IDL.Int],
@@ -172,7 +199,15 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(CategorySummary)],
         ['query'],
       ),
-    'getTaskSuggestions' : IDL.Func([], [IDL.Vec(TaskSuggestion)], ['query']),
+    'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getOutgoingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getPublicStatsForUsers' : IDL.Func(
+        [IDL.Vec(IDL.Principal)],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, PublicUserStats))],
+        ['query'],
+      ),
+    'getTaskSuggestions' : IDL.Func([], [IDL.Vec(TaskSuggestion)], []),
     'getTasksForDate' : IDL.Func([Date], [IDL.Vec(Task)], ['query']),
     'getTasksForDateRange' : IDL.Func([Date, Date], [IDL.Vec(Task)], ['query']),
     'getUserProfile' : IDL.Func(
@@ -181,9 +216,12 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'removeFriend' : IDL.Func([IDL.Principal], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
+    'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
     'toggleTaskCompletion' : IDL.Func([TaskId], [], []),
+    'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),
     'updateTask' : IDL.Func(
         [TaskId, IDL.Text, Category, Priority, IDL.Nat, Date],
         [],

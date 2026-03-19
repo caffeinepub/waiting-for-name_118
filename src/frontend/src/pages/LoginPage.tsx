@@ -1,12 +1,19 @@
-import { useEffect } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
 
 export function LoginPage() {
-  const { login, loginStatus, identity, isInitializing } = useInternetIdentity();
+  const { login, loginStatus, identity, isInitializing } =
+    useInternetIdentity();
   const navigate = useNavigate();
 
   const isAuthenticated = !!identity;
@@ -42,16 +49,17 @@ export function LoginPage() {
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto flex h-16 w-16 items-center justify-center">
-            <img 
-              src="/assets/uploads/image-1.png" 
-              alt="GRINDTRACKER Logo" 
+            <img
+              src="/assets/uploads/image-1.png"
+              alt="GRINDTRACKER Logo"
               className="h-16 w-16 object-contain"
             />
           </div>
           <div>
             <CardTitle className="text-3xl font-bold">GRINDTRACKER</CardTitle>
             <CardDescription className="mt-2 text-base">
-              Track your daily routine, measure productivity, and achieve your goals
+              Track your daily routine, measure productivity, and achieve your
+              goals
             </CardDescription>
           </div>
         </CardHeader>
@@ -62,7 +70,9 @@ export function LoginPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">✓</span>
-                  <span>Daily task management with categories and priorities</span>
+                  <span>
+                    Daily task management with categories and priorities
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">✓</span>
@@ -97,8 +107,9 @@ export function LoginPage() {
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            By logging in, you'll get secure, decentralized authentication powered by Internet
-            Identity. Your data is private and synced across all your devices.
+            By logging in, you'll get secure, decentralized authentication
+            powered by Internet Identity. Your data is private and synced across
+            all your devices.
           </p>
         </CardContent>
       </Card>

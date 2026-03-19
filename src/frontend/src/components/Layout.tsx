@@ -1,11 +1,5 @@
-import { Link, Outlet } from "@tanstack/react-router";
-import { Home, TrendingUp, Trophy, Copy, History, Moon, Sun, LogOut, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useTheme } from "next-themes";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
-import { useGetCallerUserProfile } from "@/hooks/useQueries";
-import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +8,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useGetCallerUserProfile } from "@/hooks/useQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import { Link, Outlet } from "@tanstack/react-router";
+import {
+  Copy,
+  History,
+  Home,
+  LogOut,
+  Moon,
+  Sun,
+  TrendingUp,
+  Trophy,
+  Users,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 
 export function Layout() {
   const { theme, setTheme } = useTheme();
@@ -43,6 +53,7 @@ export function Layout() {
     { name: "Achievements", href: "/achievements", icon: Trophy },
     { name: "Routine", href: "/routine", icon: Copy },
     { name: "History", href: "/history", icon: History },
+    { name: "Friends", href: "/friends", icon: Users },
   ];
 
   return (
@@ -51,12 +62,14 @@ export function Layout() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-3">
-              <img 
-                src="/assets/uploads/image-1.png" 
-                alt="GRINDTRACKER Logo" 
+              <img
+                src="/assets/uploads/image-1.png"
+                alt="GRINDTRACKER Logo"
                 className="h-10 w-10 object-contain"
               />
-              <span className="text-lg font-bold tracking-wide">GRINDTRACKER</span>
+              <span className="text-lg font-bold tracking-wide">
+                GRINDTRACKER
+              </span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-1">
@@ -65,7 +78,9 @@ export function Layout() {
                   key={item.name}
                   to={item.href}
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:bg-accent [&.active]:text-accent-foreground"
-                  activeProps={{ className: "bg-accent text-accent-foreground" }}
+                  activeProps={{
+                    className: "bg-accent text-accent-foreground",
+                  }}
                 >
                   <item.icon className="h-4 w-4" />
                   {item.name}
@@ -88,13 +103,18 @@ export function Layout() {
             {isLoggedIn && userProfile && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center gap-2 h-10 px-3">
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 h-10 px-3"
+                  >
                     <Avatar className="h-8 w-8">
                       <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                         {getInitials(userProfile.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="hidden md:inline text-sm font-medium">{userProfile.name}</span>
+                    <span className="hidden md:inline text-sm font-medium">
+                      {userProfile.name}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -107,7 +127,10 @@ export function Layout() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-destructive cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
                   </DropdownMenuItem>
@@ -123,7 +146,7 @@ export function Layout() {
               <Link
                 key={item.name}
                 to={item.href}
-                className="flex flex-col items-center gap-1 rounded-md px-3 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:text-primary"
+                className="flex flex-col items-center gap-1 rounded-md px-2 py-2 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground [&.active]:text-primary"
                 activeProps={{ className: "text-primary" }}
               >
                 <item.icon className="h-5 w-5" />
@@ -137,8 +160,6 @@ export function Layout() {
       <main className="container py-6">
         <Outlet />
       </main>
-
-
     </div>
   );
 }

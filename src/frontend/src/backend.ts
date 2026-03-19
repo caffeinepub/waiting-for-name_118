@@ -108,6 +108,13 @@ export interface Task {
     estimatedDuration: bigint;
     priority: Priority;
 }
+export interface PublicUserStats {
+    displayName: string;
+    highestStreak: bigint;
+    level: bigint;
+    currentStreak: bigint;
+    totalTaskCompletions: bigint;
+}
 export interface UserProfile {
     name: string;
     preferences?: string;
@@ -140,6 +147,7 @@ export enum UserRole {
 }
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    acceptFriendRequest(userId: Principal): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createTask(name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: Date_, createdAt: bigint): Promise<TaskId>;
     deleteTask(taskId: TaskId): Promise<void>;
@@ -147,14 +155,21 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCategorySummariesInRange(startDate: Date_, endDate: Date_): Promise<Array<CategorySummary>>;
     getCategorySummary(date: Date_): Promise<CategorySummary | null>;
+    getFriendList(): Promise<Array<Principal>>;
+    getIncomingRequests(): Promise<Array<Principal>>;
+    getOutgoingRequests(): Promise<Array<Principal>>;
+    getPublicStatsForUsers(users: Array<Principal>): Promise<Array<[Principal, PublicUserStats]>>;
     getTaskSuggestions(): Promise<Array<TaskSuggestion>>;
     getTasksForDate(date: Date_): Promise<Array<Task>>;
     getTasksForDateRange(startDate: Date_, endDate: Date_): Promise<Array<Task>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    removeFriend(friendId: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveCategorySummary(summary: CategorySummary): Promise<void>;
+    sendFriendRequest(userId: Principal): Promise<void>;
     toggleTaskCompletion(taskId: TaskId): Promise<void>;
+    updatePublicUserStats(stats: PublicUserStats): Promise<void>;
     updateTask(taskId: TaskId, name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: Date_): Promise<void>;
 }
 import type { Category as _Category, CategorySummary as _CategorySummary, Date as _Date, Priority as _Priority, Task as _Task, TaskId as _TaskId, TaskSuggestion as _TaskSuggestion, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
@@ -171,6 +186,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor._initializeAccessControlWithSecret(arg0);
+            return result;
+        }
+    }
+    async acceptFriendRequest(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.acceptFriendRequest(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.acceptFriendRequest(arg0);
             return result;
         }
     }
@@ -272,6 +301,62 @@ export class Backend implements backendInterface {
             return from_candid_opt_n13(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getFriendList(): Promise<Array<Principal>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getFriendList();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getFriendList();
+            return result;
+        }
+    }
+    async getIncomingRequests(): Promise<Array<Principal>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getIncomingRequests();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getIncomingRequests();
+            return result;
+        }
+    }
+    async getOutgoingRequests(): Promise<Array<Principal>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getOutgoingRequests();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getOutgoingRequests();
+            return result;
+        }
+    }
+    async getPublicStatsForUsers(arg0: Array<Principal>): Promise<Array<[Principal, PublicUserStats]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPublicStatsForUsers(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPublicStatsForUsers(arg0);
+            return result;
+        }
+    }
     async getTaskSuggestions(): Promise<Array<TaskSuggestion>> {
         if (this.processError) {
             try {
@@ -342,6 +427,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async removeFriend(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.removeFriend(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.removeFriend(arg0);
+            return result;
+        }
+    }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
@@ -370,6 +469,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async sendFriendRequest(arg0: Principal): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.sendFriendRequest(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.sendFriendRequest(arg0);
+            return result;
+        }
+    }
     async toggleTaskCompletion(arg0: TaskId): Promise<void> {
         if (this.processError) {
             try {
@@ -381,6 +494,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.toggleTaskCompletion(arg0);
+            return result;
+        }
+    }
+    async updatePublicUserStats(arg0: PublicUserStats): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updatePublicUserStats(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updatePublicUserStats(arg0);
             return result;
         }
     }

@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { CheckCircle2, Circle, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import type { Task } from "@/backend";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,9 +9,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Task } from "@/backend";
+import { Button } from "@/components/ui/button";
+import { useDeleteTask, useToggleTaskCompletion } from "@/hooks/useQueries";
 import { CATEGORY_LABELS } from "@/utils/taskCalculations";
-import { useToggleTaskCompletion, useDeleteTask } from "@/hooks/useQueries";
+import { CheckCircle2, Circle, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface TaskItemProps {
@@ -37,12 +37,14 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
       { taskId: task.id, date: task.date },
       {
         onSuccess: () => {
-          toast.success(task.completed ? "Task marked incomplete" : "Task completed! 🎉");
+          toast.success(
+            task.completed ? "Task marked incomplete" : "Task completed! 🎉",
+          );
         },
         onError: () => {
           toast.error("Failed to update task");
         },
-      }
+      },
     );
   };
 
@@ -57,7 +59,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
         onError: () => {
           toast.error("Failed to delete task");
         },
-      }
+      },
     );
   };
 
@@ -69,6 +71,7 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
         } animate-slide-in`}
       >
         <button
+          type="button"
           onClick={handleToggle}
           disabled={toggleMutation.isPending}
           className="mt-0.5 shrink-0 transition-transform hover:scale-110 disabled:opacity-50"
@@ -92,7 +95,9 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
             <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium">
               {CATEGORY_LABELS[task.category]}
             </span>
-            <span className={`text-xs font-medium ${PRIORITY_COLORS[task.priority]}`}>
+            <span
+              className={`text-xs font-medium ${PRIORITY_COLORS[task.priority]}`}
+            >
               {task.priority.toUpperCase()}
             </span>
             {task.estimatedDuration > 0n && (
@@ -130,12 +135,16 @@ export function TaskItem({ task, onEdit }: TaskItemProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Task</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{task.name}"? This action cannot be undone.
+              Are you sure you want to delete "{task.name}"? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

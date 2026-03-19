@@ -26,6 +26,13 @@ export interface Task {
     estimatedDuration: bigint;
     priority: Priority;
 }
+export interface PublicUserStats {
+    displayName: string;
+    highestStreak: bigint;
+    level: bigint;
+    currentStreak: bigint;
+    totalTaskCompletions: bigint;
+}
 export interface UserProfile {
     name: string;
     preferences?: string;
@@ -57,6 +64,7 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    acceptFriendRequest(userId: Principal): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createTask(name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: Date_, createdAt: bigint): Promise<TaskId>;
     deleteTask(taskId: TaskId): Promise<void>;
@@ -64,13 +72,20 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getCategorySummariesInRange(startDate: Date_, endDate: Date_): Promise<Array<CategorySummary>>;
     getCategorySummary(date: Date_): Promise<CategorySummary | null>;
+    getFriendList(): Promise<Array<Principal>>;
+    getIncomingRequests(): Promise<Array<Principal>>;
+    getOutgoingRequests(): Promise<Array<Principal>>;
+    getPublicStatsForUsers(users: Array<Principal>): Promise<Array<[Principal, PublicUserStats]>>;
     getTaskSuggestions(): Promise<Array<TaskSuggestion>>;
     getTasksForDate(date: Date_): Promise<Array<Task>>;
     getTasksForDateRange(startDate: Date_, endDate: Date_): Promise<Array<Task>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    removeFriend(friendId: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveCategorySummary(summary: CategorySummary): Promise<void>;
+    sendFriendRequest(userId: Principal): Promise<void>;
     toggleTaskCompletion(taskId: TaskId): Promise<void>;
+    updatePublicUserStats(stats: PublicUserStats): Promise<void>;
     updateTask(taskId: TaskId, name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: Date_): Promise<void>;
 }

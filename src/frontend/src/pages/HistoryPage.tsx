@@ -1,7 +1,12 @@
-import { useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import type { Category } from "@/backend";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -9,28 +14,32 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useTasksForDateRange, useGetCategorySummariesInRange } from "@/hooks/useQueries";
-import { getMonthlyData, CATEGORY_LABELS } from "@/utils/taskCalculations";
-import { Category } from "@/backend";
+import {
+  useGetCategorySummariesInRange,
+  useTasksForDateRange,
+} from "@/hooks/useQueries";
+import { CATEGORY_LABELS, getMonthlyData } from "@/utils/taskCalculations";
 import type { CategoryScore } from "@/utils/taskCalculations";
 import {
+  addMonths,
+  eachDayOfInterval,
+  endOfMonth,
+  format,
+  getDay,
+  isSameDay,
+  startOfMonth,
+  subMonths,
+} from "date-fns";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useState } from "react";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
   Radar,
   RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
   ResponsiveContainer,
 } from "recharts";
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  isSameDay,
-  addMonths,
-  subMonths,
-  getDay,
-} from "date-fns";
 
 export function HistoryPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -41,12 +50,12 @@ export function HistoryPage() {
 
   const { data: monthTasks = [], isLoading } = useTasksForDateRange(
     format(monthStart, "yyyy-MM-dd"),
-    format(monthEnd, "yyyy-MM-dd")
+    format(monthEnd, "yyyy-MM-dd"),
   );
 
   const { data: categorySummaries = [] } = useGetCategorySummariesInRange(
     format(monthStart, "yyyy-MM-dd"),
-    format(monthEnd, "yyyy-MM-dd")
+    format(monthEnd, "yyyy-MM-dd"),
   );
 
   const monthlyData = getMonthlyData(monthTasks, currentMonth);
@@ -76,8 +85,10 @@ export function HistoryPage() {
 
   // Get category scores for selected date from stored snapshots
   const getStoredCategoryScoresForDate = (dateStr: string): CategoryScore[] => {
-    const summariesForDate = categorySummaries.filter((cs) => cs.date === dateStr);
-    
+    const summariesForDate = categorySummaries.filter(
+      (cs) => cs.date === dateStr,
+    );
+
     if (summariesForDate.length === 0) {
       return [];
     }
@@ -102,7 +113,9 @@ export function HistoryPage() {
     if (chartData.length === 0) {
       return (
         <div className="flex h-[300px] items-center justify-center">
-          <p className="text-sm text-muted-foreground">No category data available</p>
+          <p className="text-sm text-muted-foreground">
+            No category data available
+          </p>
         </div>
       );
     }
@@ -115,7 +128,11 @@ export function HistoryPage() {
             dataKey="category"
             tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }}
           />
-          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+          <PolarRadiusAxis
+            angle={90}
+            domain={[0, 100]}
+            tick={{ fill: "hsl(var(--muted-foreground))" }}
+          />
           <Radar
             name="Completion %"
             dataKey="score"
@@ -133,7 +150,9 @@ export function HistoryPage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="mt-4 text-sm text-muted-foreground">Loading history...</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Loading history...
+          </p>
         </div>
       </div>
     );
@@ -143,7 +162,9 @@ export function HistoryPage() {
     <div className="space-y-6 pb-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">History</h1>
-        <p className="mt-1 text-muted-foreground">View your past performance and consistency</p>
+        <p className="mt-1 text-muted-foreground">
+          View your past performance and consistency
+        </p>
       </div>
 
       <Card>
@@ -151,7 +172,9 @@ export function HistoryPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Calendar Heatmap</CardTitle>
-              <CardDescription>Color intensity shows daily completion rate</CardDescription>
+              <CardDescription>
+                Color intensity shows daily completion rate
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={handlePrevMonth}>
@@ -177,13 +200,19 @@ export function HistoryPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-7 gap-2">
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-muted-foreground">
+                <div
+                  key={day}
+                  className="text-center text-xs font-medium text-muted-foreground"
+                >
                   {day}
                 </div>
               ))}
 
-              {Array.from({ length: startPadding }).map((_, i) => (
-                <div key={`padding-${i}`} />
+              {Array.from(
+                { length: startPadding },
+                (_, i) => `pad-${startPadding}-${i}`,
+              ).map((k) => (
+                <div key={k} />
               ))}
 
               {calendarDays.map((day) => {
@@ -197,8 +226,17 @@ export function HistoryPage() {
                   <div
                     key={dateStr}
                     onClick={() => hasData && handleDayClick(dateStr)}
+                    onKeyDown={(e) =>
+                      (e.key === "Enter" || e.key === " ") &&
+                      hasData &&
+                      handleDayClick(dateStr)
+                    }
+                    role={hasData ? "button" : undefined}
+                    tabIndex={hasData ? 0 : undefined}
                     className={`group relative aspect-square rounded-md transition-all ${getColorForScore(score)} ${
-                      isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+                      isToday
+                        ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                        : ""
                     } ${hasData ? "cursor-pointer hover:scale-110 hover:shadow-lg" : ""}`}
                     title={`${format(day, "MMM d")}: ${score}%${summary ? ` (${summary.completedTasks}/${summary.totalTasks})` : ""}${hasData ? " - Click to view details" : ""}`}
                   >
@@ -232,24 +270,32 @@ export function HistoryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Monthly Summary</CardTitle>
-          <CardDescription>Statistics for {format(currentMonth, "MMMM yyyy")}</CardDescription>
+          <CardDescription>
+            Statistics for {format(currentMonth, "MMMM yyyy")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="rounded-lg bg-secondary/50 p-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Active Days</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Active Days
+              </h4>
               <div className="mt-2 text-3xl font-bold text-primary">
                 {monthlyData.filter((d) => d.totalTasks > 0).length}
               </div>
             </div>
             <div className="rounded-lg bg-secondary/50 p-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Total Tasks</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Total Tasks
+              </h4>
               <div className="mt-2 text-3xl font-bold text-primary">
                 {monthlyData.reduce((sum, d) => sum + d.totalTasks, 0)}
               </div>
             </div>
             <div className="rounded-lg bg-secondary/50 p-4">
-              <h4 className="text-sm font-medium text-muted-foreground">Completed Tasks</h4>
+              <h4 className="text-sm font-medium text-muted-foreground">
+                Completed Tasks
+              </h4>
               <div className="mt-2 text-3xl font-bold text-primary">
                 {monthlyData.reduce((sum, d) => sum + d.completedTasks, 0)}
               </div>
@@ -259,38 +305,58 @@ export function HistoryPage() {
       </Card>
 
       {selectedDate && (
-        <Dialog open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
+        <Dialog
+          open={!!selectedDate}
+          onOpenChange={(open) => !open && setSelectedDate(null)}
+        >
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
-                Category Balance - {format(new Date(selectedDate), "EEEE, MMMM d, yyyy")}
+                Category Balance -{" "}
+                {format(new Date(selectedDate), "EEEE, MMMM d, yyyy")}
               </DialogTitle>
               <DialogDescription>
-                Spider chart showing your performance across different categories
+                Spider chart showing your performance across different
+                categories
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {(() => {
-                const summary = monthlyData.find((d) => d.date === selectedDate);
-                const categoryScores = getStoredCategoryScoresForDate(selectedDate);
+                const summary = monthlyData.find(
+                  (d) => d.date === selectedDate,
+                );
+                const categoryScores =
+                  getStoredCategoryScoresForDate(selectedDate);
 
                 return (
                   <>
                     <div className="grid grid-cols-3 gap-4 rounded-lg bg-secondary/30 p-4">
                       <div>
-                        <p className="text-xs text-muted-foreground">Daily Score</p>
-                        <p className="text-2xl font-bold text-primary">{summary?.score || 0}%</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Tasks Completed</p>
+                        <p className="text-xs text-muted-foreground">
+                          Daily Score
+                        </p>
                         <p className="text-2xl font-bold text-primary">
-                          {summary?.completedTasks || 0}/{summary?.totalTasks || 0}
+                          {summary?.score || 0}%
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Categories Active</p>
+                        <p className="text-xs text-muted-foreground">
+                          Tasks Completed
+                        </p>
                         <p className="text-2xl font-bold text-primary">
-                          {categoryScores.filter((cs) => cs.totalTasks > 0).length}
+                          {summary?.completedTasks || 0}/
+                          {summary?.totalTasks || 0}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          Categories Active
+                        </p>
+                        <p className="text-2xl font-bold text-primary">
+                          {
+                            categoryScores.filter((cs) => cs.totalTasks > 0)
+                              .length
+                          }
                         </p>
                       </div>
                     </div>
@@ -299,7 +365,9 @@ export function HistoryPage() {
                       <>
                         {renderSpiderChart(categoryScores)}
                         <div className="space-y-2">
-                          <h4 className="text-sm font-semibold">Category Details</h4>
+                          <h4 className="text-sm font-semibold">
+                            Category Details
+                          </h4>
                           <div className="grid gap-2">
                             {categoryScores
                               .filter((cs) => cs.totalTasks > 0)
@@ -308,7 +376,9 @@ export function HistoryPage() {
                                   key={cs.category}
                                   className="flex items-center justify-between rounded-md bg-secondary/30 p-3"
                                 >
-                                  <span className="text-sm font-medium">{CATEGORY_LABELS[cs.category]}</span>
+                                  <span className="text-sm font-medium">
+                                    {CATEGORY_LABELS[cs.category]}
+                                  </span>
                                   <div className="flex items-center gap-3">
                                     <span className="text-xs text-muted-foreground">
                                       {cs.completedTasks}/{cs.totalTasks}
@@ -325,7 +395,8 @@ export function HistoryPage() {
                     ) : (
                       <div className="flex h-[300px] items-center justify-center">
                         <p className="text-sm text-muted-foreground">
-                          No category data saved for this day. Complete tasks to generate a spider chart.
+                          No category data saved for this day. Complete tasks to
+                          generate a spider chart.
                         </p>
                       </div>
                     )}

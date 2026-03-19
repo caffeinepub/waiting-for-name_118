@@ -1,28 +1,48 @@
-import { useState } from "react";
-import { Plus, Calendar as CalendarIcon, Sparkles, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { TaskItem } from "@/components/TaskItem";
-import { TaskFormDialog } from "@/components/TaskFormDialog";
-import { CategoryRadarChart } from "@/components/CategoryRadarChart";
-import { StreakDisplay } from "@/components/StreakDisplay";
-import { ProductivityLevelCard } from "@/components/ProductivityLevelCard";
-import { WeeklyTaskCalendar } from "@/components/WeeklyTaskCalendar";
-import { LoadingScreen } from "@/components/LoadingScreen";
-import { useTasksForDate, useTasksForDateRange, useTaskSuggestions, useCreateTask } from "@/hooks/useQueries";
-import {
-  getTodayDateString,
-  calculateDailySummary,
-  calculateCategoryScores,
-  calculateStreaks,
-  calculateProductivityLevel,
-  CATEGORY_LABELS,
-} from "@/utils/taskCalculations";
-import { format, startOfWeek, endOfWeek } from "date-fns";
 import type { Task, TaskSuggestion } from "@/backend";
 import { Priority } from "@/backend";
+import { CategoryRadarChart } from "@/components/CategoryRadarChart";
+import { LoadingScreen } from "@/components/LoadingScreen";
+import { ProductivityLevelCard } from "@/components/ProductivityLevelCard";
+import { StreakDisplay } from "@/components/StreakDisplay";
+import { TaskFormDialog } from "@/components/TaskFormDialog";
+import { TaskItem } from "@/components/TaskItem";
+import { WeeklyTaskCalendar } from "@/components/WeeklyTaskCalendar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  useCreateTask,
+  useTaskSuggestions,
+  useTasksForDate,
+  useTasksForDateRange,
+} from "@/hooks/useQueries";
+import {
+  CATEGORY_LABELS,
+  calculateCategoryScores,
+  calculateDailySummary,
+  calculateProductivityLevel,
+  calculateStreaks,
+  getTodayDateString,
+} from "@/utils/taskCalculations";
+import { endOfWeek, format, startOfWeek } from "date-fns";
+import {
+  Calendar as CalendarIcon,
+  Plus,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export function Dashboard() {
@@ -31,12 +51,23 @@ export function Dashboard() {
   const [aiSuggestionsOpen, setAiSuggestionsOpen] = useState(false);
 
   const todayDate = getTodayDateString();
-  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
-  const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weekStart = format(
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
+    "yyyy-MM-dd",
+  );
+  const weekEnd = format(
+    endOfWeek(new Date(), { weekStartsOn: 1 }),
+    "yyyy-MM-dd",
+  );
 
-  const { data: todayTasks = [], isLoading: isLoadingToday } = useTasksForDate(todayDate);
+  const { data: todayTasks = [], isLoading: isLoadingToday } =
+    useTasksForDate(todayDate);
   const { data: weekTasks = [] } = useTasksForDateRange(weekStart, weekEnd);
-  const { data: suggestions = [], isLoading: suggestionsLoading, refetch: refetchSuggestions } = useTaskSuggestions();
+  const {
+    data: suggestions = [],
+    isLoading: suggestionsLoading,
+    refetch: refetchSuggestions,
+  } = useTaskSuggestions();
   const createTaskMutation = useCreateTask();
 
   const dailySummary = calculateDailySummary(todayTasks, todayDate);
@@ -70,7 +101,7 @@ export function Dashboard() {
         onError: () => {
           toast.error("Failed to add task");
         },
-      }
+      },
     );
   };
 
@@ -134,7 +165,8 @@ export function Dashboard() {
                 {dailySummary.score}%
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                {dailySummary.completedTasks} / {dailySummary.totalTasks} tasks completed
+                {dailySummary.completedTasks} / {dailySummary.totalTasks} tasks
+                completed
               </p>
             </div>
           </CardContent>
@@ -169,7 +201,9 @@ export function Dashboard() {
                   </Button>
                 </div>
               ) : (
-                todayTasks.map((task) => <TaskItem key={task.id} task={task} onEdit={handleEditTask} />)
+                todayTasks.map((task) => (
+                  <TaskItem key={task.id} task={task} onEdit={handleEditTask} />
+                ))
               )}
             </CardContent>
           </Card>
@@ -197,7 +231,9 @@ export function Dashboard() {
                   disabled={suggestionsLoading}
                   className="gap-2"
                 >
-                  <RefreshCw className={`h-4 w-4 ${suggestionsLoading ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${suggestionsLoading ? "animate-spin" : ""}`}
+                  />
                   Refresh
                 </Button>
                 <CollapsibleTrigger asChild>
@@ -222,19 +258,25 @@ export function Dashboard() {
                   No suggestions available right now. Try refreshing later!
                 </div>
               ) : (
-                suggestions.slice(0, 5).map((suggestion, index) => (
+                suggestions.slice(0, 5).map((suggestion) => (
                   <div
-                    key={index}
+                    key={suggestion.name}
                     className="group relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:shadow-md hover:border-primary/30"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-semibold">{suggestion.name}</h4>
-                          <Badge variant="outline" className={getCategoryColor(suggestion.category)}>
+                          <Badge
+                            variant="outline"
+                            className={getCategoryColor(suggestion.category)}
+                          >
                             {CATEGORY_LABELS[suggestion.category]}
                           </Badge>
-                          <Badge variant="outline" className={getPriorityColor(suggestion.priority)}>
+                          <Badge
+                            variant="outline"
+                            className={getPriorityColor(suggestion.priority)}
+                          >
                             {suggestion.priority.toUpperCase()}
                           </Badge>
                           {suggestion.estimatedDuration > 0n && (

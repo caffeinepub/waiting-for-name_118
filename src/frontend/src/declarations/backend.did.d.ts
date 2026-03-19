@@ -28,6 +28,13 @@ export type Date = string;
 export type Priority = { 'low' : null } |
   { 'high' : null } |
   { 'medium' : null };
+export interface PublicUserStats {
+  'displayName' : string,
+  'highestStreak' : bigint,
+  'level' : bigint,
+  'currentStreak' : bigint,
+  'totalTaskCompletions' : bigint,
+}
 export interface Task {
   'id' : TaskId,
   'date' : Date,
@@ -52,6 +59,7 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'acceptFriendRequest' : ActorMethod<[Principal], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createTask' : ActorMethod<
     [string, Category, Priority, bigint, Date, bigint],
@@ -65,14 +73,24 @@ export interface _SERVICE {
     Array<CategorySummary>
   >,
   'getCategorySummary' : ActorMethod<[Date], [] | [CategorySummary]>,
+  'getFriendList' : ActorMethod<[], Array<Principal>>,
+  'getIncomingRequests' : ActorMethod<[], Array<Principal>>,
+  'getOutgoingRequests' : ActorMethod<[], Array<Principal>>,
+  'getPublicStatsForUsers' : ActorMethod<
+    [Array<Principal>],
+    Array<[Principal, PublicUserStats]>
+  >,
   'getTaskSuggestions' : ActorMethod<[], Array<TaskSuggestion>>,
   'getTasksForDate' : ActorMethod<[Date], Array<Task>>,
   'getTasksForDateRange' : ActorMethod<[Date, Date], Array<Task>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'removeFriend' : ActorMethod<[Principal], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveCategorySummary' : ActorMethod<[CategorySummary], undefined>,
+  'sendFriendRequest' : ActorMethod<[Principal], undefined>,
   'toggleTaskCompletion' : ActorMethod<[TaskId], undefined>,
+  'updatePublicUserStats' : ActorMethod<[PublicUserStats], undefined>,
   'updateTask' : ActorMethod<
     [TaskId, string, Category, Priority, bigint, Date],
     undefined

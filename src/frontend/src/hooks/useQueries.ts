@@ -1,6 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type {
+  Category,
+  CategorySummary,
+  Date_,
+  Priority,
+  Task,
+  TaskId,
+  TaskSuggestion,
+  UserProfile,
+} from "@/backend";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActor } from "./useActor";
-import type { Task, Category, Priority, TaskId, Date_, UserProfile, CategorySummary, TaskSuggestion } from "@/backend";
 
 // Query hook to get tasks for a specific date
 export function useTasksForDate(date: Date_) {
@@ -53,7 +62,14 @@ export function useCreateTask() {
     }) => {
       if (!actor) throw new Error("Actor not initialized");
       const createdAt = BigInt(Date.now());
-      return actor.createTask(name, category, priority, estimatedDuration, date, createdAt);
+      return actor.createTask(
+        name,
+        category,
+        priority,
+        estimatedDuration,
+        date,
+        createdAt,
+      );
     },
     onSuccess: (_, variables) => {
       // Invalidate and refetch tasks for the specific date
@@ -86,7 +102,14 @@ export function useUpdateTask() {
       date: Date_;
     }) => {
       if (!actor) throw new Error("Actor not initialized");
-      return actor.updateTask(taskId, name, category, priority, estimatedDuration, date);
+      return actor.updateTask(
+        taskId,
+        name,
+        category,
+        priority,
+        estimatedDuration,
+        date,
+      );
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.date] });
@@ -101,7 +124,7 @@ export function useDeleteTask() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ taskId, date }: { taskId: TaskId; date: Date_ }) => {
+    mutationFn: async ({ taskId }: { taskId: TaskId; date: Date_ }) => {
       if (!actor) throw new Error("Actor not initialized");
       return actor.deleteTask(taskId);
     },
@@ -118,24 +141,29 @@ export function useToggleTaskCompletion() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ taskId, date }: { taskId: TaskId; date: Date_ }) => {
+    mutationFn: async ({ taskId }: { taskId: TaskId; date: Date_ }) => {
       if (!actor) throw new Error("Actor not initialized");
       return actor.toggleTaskCompletion(taskId);
     },
     onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.date] });
       queryClient.invalidateQueries({ queryKey: ["tasks", "range"] });
-      
+
       // Auto-save category snapshot for the day
       if (actor) {
         try {
           // Get updated tasks for the date
           const tasksForDate = await actor.getTasksForDate(variables.date);
-          
+
           // Calculate category scores using existing utility
-          const { calculateCategoryScores } = await import("@/utils/taskCalculations");
-          const categoryScores = calculateCategoryScores(tasksForDate, variables.date);
-          
+          const { calculateCategoryScores } = await import(
+            "@/utils/taskCalculations"
+          );
+          const categoryScores = calculateCategoryScores(
+            tasksForDate,
+            variables.date,
+          );
+
           // Convert CategoryScore[] to CategorySummary[] and save to backend
           await Promise.all(
             categoryScores.map((score) =>
@@ -145,13 +173,17 @@ export function useToggleTaskCompletion() {
                 completedTasks: BigInt(score.completedTasks),
                 completionPercentage: score.completionRate,
                 date: variables.date,
-              })
-            )
+              }),
+            ),
           );
-          
+
           // Invalidate category summary queries
-          queryClient.invalidateQueries({ queryKey: ["categorySummary", variables.date] });
-          queryClient.invalidateQueries({ queryKey: ["categorySummaries", "range"] });
+          queryClient.invalidateQueries({
+            queryKey: ["categorySummary", variables.date],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["categorySummaries", "range"],
+          });
         } catch (error) {
           console.error("Failed to save category snapshot:", error);
         }
@@ -166,12 +198,15 @@ export function useDuplicateRoutine() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ sourceDate, targetDate }: { sourceDate: Date_; targetDate: Date_ }) => {
+    mutationFn: async ({
+      sourceDate,
+      targetDate,
+    }: { sourceDate: Date_; targetDate: Date_ }) => {
       if (!actor) throw new Error("Actor not initialized");
-      
+
       // Get tasks from source date
       const sourceTasks = await actor.getTasksForDate(sourceDate);
-      
+
       // Create new tasks for target date
       const createdAt = BigInt(Date.now());
       await Promise.all(
@@ -182,13 +217,15 @@ export function useDuplicateRoutine() {
             task.priority,
             task.estimatedDuration,
             targetDate,
-            createdAt
-          )
-        )
+            createdAt,
+          ),
+        ),
       );
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", variables.targetDate] });
+      queryClient.invalidateQueries({
+        queryKey: ["tasks", variables.targetDate],
+      });
       queryClient.invalidateQueries({ queryKey: ["tasks", "range"] });
     },
   });
@@ -212,13 +249,17 @@ export function useDuplicateWeekRoutine() {
       if (!actor) throw new Error("Actor not initialized");
 
       // Get all tasks from source week
-      const sourceTasks = await actor.getTasksForDateRange(sourceWeekStart, sourceWeekEnd);
+      const sourceTasks = await actor.getTasksForDateRange(
+        sourceWeekStart,
+        sourceWeekEnd,
+      );
 
       // Calculate offset days
       const sourceStartDate = new Date(sourceWeekStart);
       const targetStartDate = new Date(targetWeekStart);
       const dayOffset = Math.floor(
-        (targetStartDate.getTime() - sourceStartDate.getTime()) / (1000 * 60 * 60 * 24)
+        (targetStartDate.getTime() - sourceStartDate.getTime()) /
+          (1000 * 60 * 60 * 24),
       );
 
       // Create tasks for target week with adjusted dates
@@ -236,9 +277,9 @@ export function useDuplicateWeekRoutine() {
             task.priority,
             task.estimatedDuration,
             targetDateStr,
-            createdAt
+            createdAt,
           );
-        })
+        }),
       );
     },
     onSuccess: () => {
@@ -253,20 +294,25 @@ export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
 
   const query = useQuery<UserProfile | null>({
-    queryKey: ['currentUserProfile'],
+    queryKey: ["currentUserProfile"],
     queryFn: async () => {
-      console.log('[useGetCallerUserProfile] Starting profile query...');
+      console.log("[useGetCallerUserProfile] Starting profile query...");
       if (!actor) {
-        console.error('[useGetCallerUserProfile] Actor not available');
-        throw new Error('Actor not available');
+        console.error("[useGetCallerUserProfile] Actor not available");
+        throw new Error("Actor not available");
       }
       try {
-        console.log('[useGetCallerUserProfile] Fetching profile from backend...');
+        console.log(
+          "[useGetCallerUserProfile] Fetching profile from backend...",
+        );
         const profile = await actor.getCallerUserProfile();
-        console.log('[useGetCallerUserProfile] Profile loaded:', profile ? 'User profile found' : 'No profile (new user)');
+        console.log(
+          "[useGetCallerUserProfile] Profile loaded:",
+          profile ? "User profile found" : "No profile (new user)",
+        );
         return profile;
       } catch (error) {
-        console.error('[useGetCallerUserProfile] Query failed:', error);
+        console.error("[useGetCallerUserProfile] Query failed:", error);
         throw error;
       }
     },
@@ -274,7 +320,7 @@ export function useGetCallerUserProfile() {
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
     gcTime: 5 * 60 * 1000,
-    staleTime: Infinity, // Never consider stale - only refetch on explicit invalidation
+    staleTime: Number.POSITIVE_INFINITY, // Never consider stale - only refetch on explicit invalidation
     // Prevent automatic refetches that cause loops
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
@@ -300,7 +346,7 @@ export function useSaveCallerUserProfile() {
       return actor.saveCallerUserProfile(profile);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+      queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
     },
   });
 }
@@ -321,7 +367,10 @@ export function useGetCategorySummary(date: Date_) {
 }
 
 // Query hook to get category summaries for a date range
-export function useGetCategorySummariesInRange(startDate: Date_, endDate: Date_) {
+export function useGetCategorySummariesInRange(
+  startDate: Date_,
+  endDate: Date_,
+) {
   const { actor, isFetching } = useActor();
 
   return useQuery<CategorySummary[]>({
@@ -346,8 +395,12 @@ export function useSaveCategorySummary() {
       return actor.saveCategorySummary(summary);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["categorySummary", variables.date] });
-      queryClient.invalidateQueries({ queryKey: ["categorySummaries", "range"] });
+      queryClient.invalidateQueries({
+        queryKey: ["categorySummary", variables.date],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["categorySummaries", "range"],
+      });
     },
   });
 }

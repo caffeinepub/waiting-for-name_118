@@ -1,5 +1,13 @@
-import { useState, useEffect } from "react";
+import type { Task, TaskSuggestion } from "@/backend";
+import { Category, Priority } from "@/backend";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -17,15 +25,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { Task, TaskSuggestion } from "@/backend";
-import { Category, Priority } from "@/backend";
-import { useCreateTask, useUpdateTask, useTaskSuggestions } from "@/hooks/useQueries";
-import { toast } from "sonner";
+import {
+  useCreateTask,
+  useTaskSuggestions,
+  useUpdateTask,
+} from "@/hooks/useQueries";
 import { CATEGORY_LABELS } from "@/utils/taskCalculations";
-import { Sparkles, ChevronDown, Plus, Zap, Clock } from "lucide-react";
+import { ChevronDown, Clock, Plus, Sparkles, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface TaskFormDialogProps {
   open: boolean;
@@ -56,7 +64,12 @@ const CATEGORY_ICONS: Record<Category, string> = {
   [Category.other]: "📋",
 };
 
-export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialogProps) {
+export function TaskFormDialog({
+  open,
+  onOpenChange,
+  date,
+  task,
+}: TaskFormDialogProps) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<Category>(Category.other);
   const [priority, setPriority] = useState<Priority>(Priority.medium);
@@ -65,14 +78,20 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
 
   const createMutation = useCreateTask();
   const updateMutation = useUpdateTask();
-  const { data: suggestions = [], isLoading: suggestionsLoading, refetch: refetchSuggestions } = useTaskSuggestions();
+  const {
+    data: suggestions = [],
+    isLoading: suggestionsLoading,
+    refetch: refetchSuggestions,
+  } = useTaskSuggestions();
 
   useEffect(() => {
     if (task) {
       setName(task.name);
       setCategory(task.category);
       setPriority(task.priority);
-      setDuration(task.estimatedDuration > 0n ? String(task.estimatedDuration) : "");
+      setDuration(
+        task.estimatedDuration > 0n ? String(task.estimatedDuration) : "",
+      );
       setShowAiSuggestions(false);
     } else {
       setName("");
@@ -81,7 +100,7 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
       setDuration("");
       setShowAiSuggestions(false);
     }
-  }, [task, open]);
+  }, [task]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +110,9 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
       return;
     }
 
-    const estimatedDuration = duration ? BigInt(parseInt(duration, 10)) : 0n;
+    const estimatedDuration = duration
+      ? BigInt(Number.parseInt(duration, 10))
+      : 0n;
 
     if (task) {
       // Update existing task
@@ -112,7 +133,7 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
           onError: () => {
             toast.error("Failed to update task");
           },
-        }
+        },
       );
     } else {
       // Create new task
@@ -136,7 +157,7 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
           onError: () => {
             toast.error("Failed to create task");
           },
-        }
+        },
       );
     }
   };
@@ -145,7 +166,11 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
     setName(suggestion.name);
     setCategory(suggestion.category);
     setPriority(suggestion.priority);
-    setDuration(suggestion.estimatedDuration > 0n ? String(suggestion.estimatedDuration) : "");
+    setDuration(
+      suggestion.estimatedDuration > 0n
+        ? String(suggestion.estimatedDuration)
+        : "",
+    );
     setShowAiSuggestions(false);
     toast.success("Suggestion applied! Review and save.");
   };
@@ -169,7 +194,8 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
       [Category.fitness]: "bg-chart-2/20 text-chart-2 border-chart-2/30",
       [Category.health]: "bg-chart-3/20 text-chart-3 border-chart-3/30",
       [Category.work]: "bg-chart-4/20 text-chart-4 border-chart-4/30",
-      [Category.personalDevelopment]: "bg-chart-5/20 text-chart-5 border-chart-5/30",
+      [Category.personalDevelopment]:
+        "bg-chart-5/20 text-chart-5 border-chart-5/30",
       [Category.social]: "bg-chart-6/20 text-chart-6 border-chart-6/30",
       [Category.other]: "bg-chart-7/20 text-chart-7 border-chart-7/30",
     };
@@ -186,12 +212,17 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
             {task ? "Edit Task" : "Create New Task"}
           </DialogTitle>
           <DialogDescription>
-            {task ? "Update the task details below." : "Add a new task to your daily routine."}
+            {task
+              ? "Update the task details below."
+              : "Add a new task to your daily routine."}
           </DialogDescription>
         </DialogHeader>
 
         {!task && (
-          <Collapsible open={showAiSuggestions} onOpenChange={setShowAiSuggestions}>
+          <Collapsible
+            open={showAiSuggestions}
+            onOpenChange={setShowAiSuggestions}
+          >
             <CollapsibleTrigger asChild>
               <Button
                 type="button"
@@ -204,8 +235,10 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
                 }}
               >
                 <Sparkles className="h-4 w-4 text-primary" />
-                Get AI Suggestions
-                <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${showAiSuggestions ? "rotate-180" : ""}`} />
+                Suggestions to get you started with
+                <ChevronDown
+                  className={`h-4 w-4 ml-auto transition-transform ${showAiSuggestions ? "rotate-180" : ""}`}
+                />
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-4">
@@ -220,26 +253,38 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
                       No suggestions available. Try again later!
                     </div>
                   ) : (
-                    suggestions.slice(0, 3).map((suggestion, index) => (
+                    suggestions.slice(0, 3).map((suggestion) => (
                       <div
-                        key={index}
+                        key={suggestion.name}
                         className="group rounded-lg border bg-card/50 p-3 space-y-2 hover:bg-card hover:shadow-sm transition-all"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 space-y-1.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold">{suggestion.name}</span>
-                              <Badge variant="outline" className={`text-xs ${getCategoryColor(suggestion.category)}`}>
-                                {CATEGORY_ICONS[suggestion.category]} {CATEGORY_LABELS[suggestion.category]}
+                              <span className="text-sm font-semibold">
+                                {suggestion.name}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${getCategoryColor(suggestion.category)}`}
+                              >
+                                {CATEGORY_ICONS[suggestion.category]}{" "}
+                                {CATEGORY_LABELS[suggestion.category]}
                               </Badge>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className={`text-xs ${getPriorityColor(suggestion.priority)}`}>
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${getPriorityColor(suggestion.priority)}`}
+                              >
                                 <Zap className="h-3 w-3 mr-1" />
                                 {suggestion.priority}
                               </Badge>
                               {suggestion.estimatedDuration > 0n && (
-                                <Badge variant="outline" className="text-xs bg-muted">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs bg-muted"
+                                >
                                   <Clock className="h-3 w-3 mr-1" />
                                   {String(suggestion.estimatedDuration)} min
                                 </Badge>
@@ -295,7 +340,10 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
                     onValueChange={(value) => setCategory(value as Category)}
                     disabled={isPending}
                   >
-                    <SelectTrigger id="category" className="border-2 focus:border-primary">
+                    <SelectTrigger
+                      id="category"
+                      className="border-2 focus:border-primary"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -309,7 +357,10 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
                       ))}
                     </SelectContent>
                   </Select>
-                  <Badge variant="outline" className={`${getCategoryColor(category)} mt-1`}>
+                  <Badge
+                    variant="outline"
+                    className={`${getCategoryColor(category)} mt-1`}
+                  >
                     {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
                   </Badge>
                 </div>
@@ -323,7 +374,10 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
                     onValueChange={(value) => setPriority(value as Priority)}
                     disabled={isPending}
                   >
-                    <SelectTrigger id="priority" className="border-2 focus:border-primary">
+                    <SelectTrigger
+                      id="priority"
+                      className="border-2 focus:border-primary"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -334,7 +388,10 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
                       ))}
                     </SelectContent>
                   </Select>
-                  <Badge variant="outline" className={`${getPriorityColor(priority)} mt-1`}>
+                  <Badge
+                    variant="outline"
+                    className={`${getPriorityColor(priority)} mt-1`}
+                  >
                     <Zap className="h-3 w-3 mr-1" />
                     {priority.toUpperCase()}
                   </Badge>
@@ -342,7 +399,10 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="duration" className="text-base font-semibold flex items-center gap-2">
+                <Label
+                  htmlFor="duration"
+                  className="text-base font-semibold flex items-center gap-2"
+                >
                   <Clock className="h-4 w-4" />
                   Estimated Duration (minutes)
                 </Label>
@@ -370,7 +430,11 @@ export function TaskFormDialog({ open, onOpenChange, date, task }: TaskFormDialo
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending} className="flex-1 sm:flex-none gap-2">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="flex-1 sm:flex-none gap-2"
+            >
               {isPending ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

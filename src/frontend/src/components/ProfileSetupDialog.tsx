@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,8 +9,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
 import { useSaveCallerUserProfile } from "@/hooks/useQueries";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface ProfileSetupDialogProps {
@@ -24,7 +24,7 @@ export function ProfileSetupDialog({ open }: ProfileSetupDialogProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) {
       toast.error("Please enter your name");
       return;
@@ -50,7 +50,8 @@ export function ProfileSetupDialog({ open }: ProfileSetupDialogProps) {
           <DialogHeader>
             <DialogTitle>Welcome! Let's set up your profile</DialogTitle>
             <DialogDescription>
-              Please enter your name to personalize your experience. You can change this later.
+              Please enter your name to personalize your experience. You can
+              change this later.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -67,7 +68,10 @@ export function ProfileSetupDialog({ open }: ProfileSetupDialogProps) {
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={saveProfile.isPending || !name.trim()}>
+            <Button
+              type="submit"
+              disabled={saveProfile.isPending || !name.trim()}
+            >
               {saveProfile.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

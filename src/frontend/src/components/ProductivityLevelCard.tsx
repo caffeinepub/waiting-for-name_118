@@ -1,4 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import type { ProductivityLevelInfo } from "@/utils/taskCalculations";
 import { Trophy } from "lucide-react";
@@ -30,7 +36,9 @@ const LEVEL_CONFIG = {
   },
 };
 
-export function ProductivityLevelCard({ levelInfo }: ProductivityLevelCardProps) {
+export function ProductivityLevelCard({
+  levelInfo,
+}: ProductivityLevelCardProps) {
   const config = LEVEL_CONFIG[levelInfo.level];
 
   return (
@@ -48,7 +56,9 @@ export function ProductivityLevelCard({ levelInfo }: ProductivityLevelCardProps)
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-center">
-          <div className={`text-4xl font-bold ${config.color}`}>{config.label}</div>
+          <div className={`text-4xl font-bold ${config.color}`}>
+            {config.label}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {levelInfo.tasksCompleted} tasks completed
           </p>

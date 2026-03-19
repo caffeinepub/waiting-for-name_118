@@ -1,13 +1,26 @@
-import { useState } from "react";
-import { Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useDuplicateRoutine, useDuplicateWeekRoutine } from "@/hooks/useQueries";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  useDuplicateRoutine,
+  useDuplicateWeekRoutine,
+} from "@/hooks/useQueries";
 import { getTodayDateString } from "@/utils/taskCalculations";
-import { format, addDays, startOfWeek, endOfWeek, addWeeks } from "date-fns";
+import { addDays, addWeeks, endOfWeek, format, startOfWeek } from "date-fns";
+import { Check, Copy } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export function RoutinePage() {
@@ -30,7 +43,7 @@ export function RoutinePage() {
         onError: () => {
           toast.error("Failed to copy routine");
         },
-      }
+      },
     );
   };
 
@@ -45,14 +58,16 @@ export function RoutinePage() {
       { sourceDate: todayDate, targetDate: targetDateStr },
       {
         onSuccess: () => {
-          toast.success(`Routine copied to ${format(targetDate, "MMM d, yyyy")}!`);
+          toast.success(
+            `Routine copied to ${format(targetDate, "MMM d, yyyy")}!`,
+          );
           setTargetDate(undefined);
           setCalendarOpen(false);
         },
         onError: () => {
           toast.error("Failed to copy routine");
         },
-      }
+      },
     );
   };
 
@@ -74,7 +89,7 @@ export function RoutinePage() {
         onError: () => {
           toast.error("Failed to copy week routine");
         },
-      }
+      },
     );
   };
 
@@ -83,7 +98,9 @@ export function RoutinePage() {
   return (
     <div className="space-y-6 pb-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Routine Management</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Routine Management
+        </h1>
         <p className="mt-1 text-muted-foreground">
           Copy your routines to save time and maintain consistency
         </p>
@@ -96,7 +113,9 @@ export function RoutinePage() {
               <Copy className="h-5 w-5" />
               Copy to Tomorrow
             </CardTitle>
-            <CardDescription>Duplicate today's tasks to tomorrow</CardDescription>
+            <CardDescription>
+              Duplicate today's tasks to tomorrow
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
@@ -125,14 +144,19 @@ export function RoutinePage() {
               <Copy className="h-5 w-5" />
               Copy to Specific Date
             </CardTitle>
-            <CardDescription>Choose a date to copy today's routine</CardDescription>
+            <CardDescription>
+              Choose a date to copy today's routine
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="space-y-2">
               <Label>Select Target Date</Label>
               <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal"
+                  >
                     {targetDate ? format(targetDate, "PPP") : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
@@ -173,7 +197,9 @@ export function RoutinePage() {
               <Copy className="h-5 w-5" />
               Copy Entire Week
             </CardTitle>
-            <CardDescription>Duplicate this week's routine to next week</CardDescription>
+            <CardDescription>
+              Duplicate this week's routine to next week
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
@@ -206,27 +232,27 @@ export function RoutinePage() {
             <p className="flex items-start gap-2">
               <span className="text-primary">•</span>
               <span>
-                <strong>Copy to Tomorrow:</strong> Quickly duplicate today's entire task list to
-                tomorrow with one click
+                <strong>Copy to Tomorrow:</strong> Quickly duplicate today's
+                entire task list to tomorrow with one click
               </span>
             </p>
             <p className="flex items-start gap-2">
               <span className="text-primary">•</span>
               <span>
-                <strong>Copy to Specific Date:</strong> Select any future date and copy today's
-                routine to that day
+                <strong>Copy to Specific Date:</strong> Select any future date
+                and copy today's routine to that day
               </span>
             </p>
             <p className="flex items-start gap-2">
               <span className="text-primary">•</span>
               <span>
-                <strong>Copy Entire Week:</strong> Duplicate your entire week's schedule to the
-                following week
+                <strong>Copy Entire Week:</strong> Duplicate your entire week's
+                schedule to the following week
               </span>
             </p>
             <p className="mt-4 text-muted-foreground">
-              Note: Copied tasks will be created as new, uncompleted tasks. Past completion status
-              is not copied.
+              Note: Copied tasks will be created as new, uncompleted tasks. Past
+              completion status is not copied.
             </p>
           </div>
         </CardContent>

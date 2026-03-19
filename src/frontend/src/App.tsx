@@ -1,15 +1,22 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider, createRouter, createRootRoute, createRoute, Outlet } from "@tanstack/react-router";
-import { ThemeProvider } from "next-themes";
-import { Toaster } from "@/components/ui/sonner";
 import { Layout } from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { Dashboard } from "@/pages/Dashboard";
-import { WeeklyPage } from "@/pages/WeeklyPage";
+import { Toaster } from "@/components/ui/sonner";
 import { AchievementsPage } from "@/pages/AchievementsPage";
-import { RoutinePage } from "@/pages/RoutinePage";
+import { Dashboard } from "@/pages/Dashboard";
+import { FriendsPage } from "@/pages/FriendsPage";
 import { HistoryPage } from "@/pages/HistoryPage";
 import { LoginPage } from "@/pages/LoginPage";
+import { RoutinePage } from "@/pages/RoutinePage";
+import { WeeklyPage } from "@/pages/WeeklyPage";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  Outlet,
+  RouterProvider,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
+import { ThemeProvider } from "next-themes";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +80,12 @@ const historyRoute = createRoute({
   component: HistoryPage,
 });
 
+const friendsRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: "/friends",
+  component: FriendsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   protectedRoute.addChildren([
@@ -81,6 +94,7 @@ const routeTree = rootRoute.addChildren([
     achievementsRoute,
     routineRoute,
     historyRoute,
+    friendsRoute,
   ]),
 ]);
 

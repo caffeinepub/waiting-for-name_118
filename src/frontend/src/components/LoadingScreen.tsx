@@ -14,7 +14,7 @@ export function LoadingScreen({ message = "Loading..." }: LoadingScreenProps) {
             className="w-full h-full object-contain animate-float"
           />
         </div>
-        
+
         {/* Spinner */}
         <div className="flex justify-center">
           <div className="relative">
@@ -22,7 +22,7 @@ export function LoadingScreen({ message = "Loading..." }: LoadingScreenProps) {
             <div className="absolute inset-0 h-12 w-12 animate-ping rounded-full border-4 border-primary/10" />
           </div>
         </div>
-        
+
         {/* Loading Message */}
         <p className="text-sm font-medium text-muted-foreground animate-pulse">
           {message}

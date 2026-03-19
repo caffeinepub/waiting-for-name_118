@@ -1,7 +1,21 @@
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { format } from "date-fns";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { DailySummary } from "@/utils/taskCalculations";
+import { format } from "date-fns";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 interface WeeklyChartProps {
   dailySummaries: DailySummary[];
@@ -18,7 +32,9 @@ export function WeeklyChart({ dailySummaries }: WeeklyChartProps) {
     <Card>
       <CardHeader>
         <CardTitle>Weekly Performance</CardTitle>
-        <CardDescription>Daily completion scores over the past 7 days</CardDescription>
+        <CardDescription>
+          Daily completion scores over the past 7 days
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={250}>

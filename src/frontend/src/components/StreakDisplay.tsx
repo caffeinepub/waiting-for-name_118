@@ -1,7 +1,13 @@
-import { Flame } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { StreakInfo } from "@/utils/taskCalculations";
 import { CATEGORY_LABELS } from "@/utils/taskCalculations";
+import { Flame } from "lucide-react";
 
 interface StreakDisplayProps {
   streakInfo: StreakInfo;
@@ -32,10 +38,13 @@ export function StreakDisplay({ streakInfo }: StreakDisplayProps) {
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
               <Flame className="h-12 w-12 animate-pulse text-accent" />
-              <span className="text-6xl font-bold tabular-nums text-accent">{currentStreak}</span>
+              <span className="text-6xl font-bold tabular-nums text-accent">
+                {currentStreak}
+              </span>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Current streak · Best: {longestStreak} {longestStreak === 1 ? "day" : "days"}
+              Current streak · Best: {longestStreak}{" "}
+              {longestStreak === 1 ? "day" : "days"}
             </p>
           </div>
         </div>
@@ -49,7 +58,9 @@ export function StreakDisplay({ streakInfo }: StreakDisplayProps) {
                   key={cs.category}
                   className="flex items-center justify-between rounded-md bg-secondary/50 px-3 py-2 text-sm"
                 >
-                  <span className="font-medium">{CATEGORY_LABELS[cs.category]}</span>
+                  <span className="font-medium">
+                    {CATEGORY_LABELS[cs.category]}
+                  </span>
                   <span className="flex items-center gap-1 text-accent">
                     <Flame className="h-3.5 w-3.5" />
                     {cs.streak}
