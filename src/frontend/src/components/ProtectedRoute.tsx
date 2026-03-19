@@ -7,8 +7,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
-const PROFILE_LOAD_TIMEOUT = 15000; // 15 seconds - increased for slower networks
-
 interface ProtectedRouteProps {
   children: ReactNode;
 }
@@ -17,7 +15,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { identity, isInitializing } = useInternetIdentity();
   const navigate = useNavigate();
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
-  const loadingStartTime = useRef<number | null>(null);
 
   const isAuthenticated = !!identity;
 
@@ -30,62 +27,40 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     refetch,
   } = useGetCallerUserProfile();
 
-  // Track when loading starts
+  // Timeout for isInitializing stuck state — navigate to login after 8s
+  const initTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (profileLoading && isAuthenticated && !isInitializing) {
-      if (!loadingStartTime.current) {
-        loadingStartTime.current = Date.now();
-        console.log(
-          "[ProtectedRoute] Profile loading started at",
-          new Date().toISOString(),
-        );
-      }
+    if (isInitializing) {
+      initTimeoutRef.current = setTimeout(() => {
+        navigate({ to: "/login", replace: true });
+      }, 8000);
     } else {
-      loadingStartTime.current = null;
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current);
+        initTimeoutRef.current = null;
+      }
     }
-  }, [profileLoading, isAuthenticated, isInitializing]);
+    return () => {
+      if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
+    };
+  }, [isInitializing, navigate]);
 
-  // Debug logging
+  // Profile load timeout — fires once, doesn't reset on flicker
+  const profileTimeoutStarted = useRef(false);
   useEffect(() => {
-    console.log("[ProtectedRoute] State:", {
-      isInitializing,
-      isAuthenticated,
-      profileLoading,
-      isFetched,
-      isError,
-      hasProfile: !!userProfile,
-      loadingTimedOut,
-      error: error?.message,
-    });
-  }, [
-    isInitializing,
-    isAuthenticated,
-    profileLoading,
-    isFetched,
-    isError,
-    userProfile,
-    loadingTimedOut,
-    error,
-  ]);
-
-  // Set up timeout for profile loading
-  useEffect(() => {
-    if (profileLoading && isAuthenticated && !isInitializing) {
-      console.log("[ProtectedRoute] Starting profile load timeout timer");
+    if (
+      profileLoading &&
+      isAuthenticated &&
+      !isInitializing &&
+      !profileTimeoutStarted.current
+    ) {
+      profileTimeoutStarted.current = true;
       const timeoutId = setTimeout(() => {
-        const duration = loadingStartTime.current
-          ? ((Date.now() - loadingStartTime.current) / 1000).toFixed(1)
-          : "unknown";
-        console.warn(
-          "[ProtectedRoute] Profile loading timed out after",
-          duration,
-          "seconds",
-        );
         setLoadingTimedOut(true);
-      }, PROFILE_LOAD_TIMEOUT);
-
+      }, 8000);
       return () => {
         clearTimeout(timeoutId);
+        profileTimeoutStarted.current = false;
       };
     }
   }, [profileLoading, isAuthenticated, isInitializing]);
@@ -93,35 +68,29 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // Redirect to login if not authenticated (after initialization completes)
   useEffect(() => {
     if (!isInitializing && !isAuthenticated) {
-      console.log("[ProtectedRoute] Redirecting to login - not authenticated");
       navigate({ to: "/login", replace: true });
     }
   }, [isAuthenticated, isInitializing, navigate]);
 
   // Show loading while initializing or checking authentication
   if (isInitializing) {
-    console.log("[ProtectedRoute] Showing initialization loading...");
     return <LoadingScreen message="Initializing..." />;
   }
 
   // If not authenticated, don't render anything (redirect will happen)
   if (!isAuthenticated) {
-    console.log("[ProtectedRoute] Not authenticated, returning null");
     return null;
   }
 
   // Show error state if profile loading failed or timed out
   if ((isError && !profileLoading) || loadingTimedOut) {
-    console.error("[ProtectedRoute] Profile loading error or timeout:", error);
-
     const handleRetry = () => {
-      console.log("[ProtectedRoute] Retrying profile load...");
       setLoadingTimedOut(false);
+      profileTimeoutStarted.current = false;
       refetch();
     };
 
     const handleForceReload = () => {
-      console.log("[ProtectedRoute] Force reloading page...");
       window.location.reload();
     };
 
@@ -137,6 +106,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
               ? "Your profile is taking longer than expected to load. This might be a network issue or the backend might be slow to respond."
               : "We couldn't load your profile. This might be a temporary network issue."}
           </p>
+          <p className="text-xs text-muted-foreground mb-4">{error?.message}</p>
           <div className="flex gap-2 justify-center">
             <Button onClick={handleRetry} variant="default">
               Try Again
@@ -152,18 +122,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Show loading while fetching profile
   if (profileLoading) {
-    console.log("[ProtectedRoute] Showing profile loading...");
     return <LoadingScreen message="Loading your profile..." />;
   }
 
   // Show profile setup dialog for new users
   const showProfileSetup =
     isAuthenticated && !profileLoading && isFetched && userProfile === null;
-
-  console.log(
-    "[ProtectedRoute] Rendering children, showProfileSetup:",
-    showProfileSetup,
-  );
 
   return (
     <>

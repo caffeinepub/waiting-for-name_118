@@ -297,29 +297,19 @@ export function useGetCallerUserProfile() {
   const query = useQuery<UserProfile | null>({
     queryKey: ["currentUserProfile"],
     queryFn: async () => {
-      console.log("[useGetCallerUserProfile] Starting profile query...");
-      if (!actor) {
-        console.error("[useGetCallerUserProfile] Actor not available");
-        throw new Error("Actor not available");
-      }
+      if (!actor) return null;
       try {
-        console.log(
-          "[useGetCallerUserProfile] Fetching profile from backend...",
-        );
         const profile = await actor.getCallerUserProfile();
-        console.log(
-          "[useGetCallerUserProfile] Profile loaded:",
-          profile ? "User profile found" : "No profile (new user)",
-        );
         return profile;
       } catch (error) {
-        console.error("[useGetCallerUserProfile] Query failed:", error);
-        throw error;
+        console.warn(
+          "[useGetCallerUserProfile] Profile fetch failed, treating as new user:",
+          error,
+        );
+        return null;
       }
     },
     enabled: !!actor && !actorFetching,
-    retry: 2,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
     gcTime: 5 * 60 * 1000,
     staleTime: Number.POSITIVE_INFINITY, // Never consider stale - only refetch on explicit invalidation
     // Prevent automatic refetches that cause loops

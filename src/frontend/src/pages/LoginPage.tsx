@@ -9,15 +9,24 @@ import {
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export function LoginPage() {
   const { login, loginStatus, identity, isInitializing } =
     useInternetIdentity();
   const navigate = useNavigate();
+  const [initOverride, setInitOverride] = useState(false);
 
   const isAuthenticated = !!identity;
   const isLoggingIn = loginStatus === "logging-in";
+
+  // If still initializing after 5 seconds, show the login button anyway
+  useEffect(() => {
+    if (isInitializing) {
+      const t = setTimeout(() => setInitOverride(true), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [isInitializing]);
 
   useEffect(() => {
     if (isAuthenticated && !isInitializing) {
@@ -33,11 +42,11 @@ export function LoginPage() {
     }
   };
 
-  if (isInitializing) {
+  if (isInitializing && !initOverride) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
           <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
@@ -95,6 +104,7 @@ export function LoginPage() {
             disabled={isLoggingIn}
             className="w-full h-12 text-base font-semibold"
             size="lg"
+            data-ocid="login.primary_button"
           >
             {isLoggingIn ? (
               <>
