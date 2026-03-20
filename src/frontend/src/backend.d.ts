@@ -11,9 +11,15 @@ export interface PremiumStatus {
     identityCode: string;
     status: Variant_pending_approved_rejected;
     appliedAt: bigint;
+    monthlyExpiry?: bigint;
     displayName?: string;
     applied: boolean;
     premiumCode?: string;
+}
+export interface WheelData {
+    totalSpinsUsed: bigint;
+    earnedTitles: Array<string>;
+    totalSpinsEarned: bigint;
 }
 export interface CategorySummary {
     totalTasks: bigint;
@@ -50,11 +56,6 @@ export interface TaskSuggestion {
     priority: Priority;
     reason: string;
 }
-export interface WheelData {
-    totalSpinsEarned: bigint;
-    totalSpinsUsed: bigint;
-    earnedTitles: Array<string>;
-}
 export enum Category {
     social = "social",
     other = "other",
@@ -79,6 +80,11 @@ export enum Variant_pending_approved_rejected {
     approved = "approved",
     rejected = "rejected"
 }
+export enum WheelType {
+    epic = "epic",
+    legendary = "legendary",
+    common = "common"
+}
 export interface backendInterface {
     acceptFriendRequest(userId: Principal): Promise<void>;
     applyForPremium(displayName: string): Promise<void>;
@@ -86,12 +92,14 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createTask(name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: string, createdAt: bigint): Promise<bigint>;
     deleteTask(taskId: bigint): Promise<void>;
+    getAllMonthlySubscriptions(): Promise<Array<[Principal, bigint]>>;
     getAllPremiumApplications(): Promise<Array<[Principal, PremiumStatus]>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCategorySummariesInRange(startDate: string, endDate: string): Promise<Array<CategorySummary>>;
     getCategorySummary(date: string): Promise<CategorySummary | null>;
     getEarnedTitlesForUser(user: Principal): Promise<Array<string>>;
+    getEarnedTitlesForUsers(users: Array<Principal>): Promise<Array<[Principal, Array<string>]>>;
     getFriendList(): Promise<Array<Principal>>;
     getIncomingRequests(): Promise<Array<Principal>>;
     getMyIdentityCode(): Promise<string>;
@@ -101,24 +109,27 @@ export interface backendInterface {
     getPremiumApplicationsSummary(): Promise<[bigint, Array<[Principal, PremiumStatus]>]>;
     getPremiumStatus(user: Principal): Promise<PremiumStatus | null>;
     getPublicStatsForUsers(users: Array<Principal>): Promise<Array<[Principal, PublicUserStats]>>;
-    getEarnedTitlesForUsers(users: Array<Principal>): Promise<Array<[Principal, Array<string>]>>;
     getTaskSuggestions(): Promise<Array<TaskSuggestion>>;
     getTasksForDate(date: string): Promise<Array<Task>>;
     getTasksForDateRange(startDate: string, endDate: string): Promise<Array<Task>>;
     getUniversalMasterCode(): Promise<string>;
     getUserIdentityCode(user: Principal): Promise<string>;
+    getUserMonthlyExpiry(user: Principal): Promise<bigint | null>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    grantMonthlyAccess(user: Principal, months: bigint): Promise<void>;
     isCallerAdmin(): Promise<boolean>;
+    isCallerMonthlyActive(): Promise<boolean>;
     isCallerPremium(): Promise<boolean>;
     isUserPremium(user: Principal): Promise<boolean>;
     redeemPremiumCode(code: string): Promise<boolean>;
     rejectPremium(applicant: Principal): Promise<void>;
     removeFriend(friendId: Principal): Promise<void>;
     requestPremiumStatus(): Promise<void>;
+    revokeMonthlyAccess(user: Principal): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveCategorySummary(summary: CategorySummary): Promise<void>;
     sendFriendRequest(userId: Principal): Promise<void>;
-    spinWheel(wheelType: { common: null } | { epic: null } | { legendary: null }): Promise<string>;
+    spinWheel(wheelType: WheelType): Promise<string>;
     toggleTaskCompletion(taskId: bigint): Promise<void>;
     updatePublicUserStats(stats: PublicUserStats): Promise<void>;
     updateTask(taskId: bigint, name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: string): Promise<void>;

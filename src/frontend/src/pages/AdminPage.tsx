@@ -3,17 +3,21 @@ import { Variant_pending_approved_rejected } from "@/backend";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActor } from "@/hooks/useActor";
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  Calendar,
   Check,
   Copy,
   Fingerprint,
   Key,
   Loader2,
   Shield,
+  UserCheck,
+  UserX,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -64,11 +68,21 @@ function CopyButton({ value, label }: { value: string; label?: string }) {
   );
 }
 
+const formatExpiry = (ns: bigint) => {
+  const ms = Number(ns / 1_000_000n);
+  return new Date(ms).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
 export function AdminPage() {
   const { actor, isFetching } = useActor();
   const queryClient = useQueryClient();
   const [newCodes, setNewCodes] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("all");
+  const [grantMonths, setGrantMonths] = useState<Record<string, number>>({});
 
   const { data: isAdmin, isLoading: isAdminLoading } = useQuery({
     queryKey: ["isAdmin"],
@@ -100,6 +114,18 @@ export function AdminPage() {
     refetchInterval: 30000,
   });
 
+  const { data: monthlySubscriptions = [], isLoading: subsLoading } = useQuery<
+    Array<[Principal, bigint]>
+  >({
+    queryKey: ["allMonthlySubscriptions"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllMonthlySubscriptions();
+    },
+    enabled: !!actor && !isFetching && !!isAdmin,
+    refetchInterval: 30000,
+  });
+
   const approveMutation = useMutation({
     mutationFn: async (principal: Principal) => {
       if (!actor) throw new Error("Actor not initialized");
@@ -124,6 +150,36 @@ export function AdminPage() {
       toast.success("Application rejected");
     },
     onError: () => toast.error("Failed to reject application"),
+  });
+
+  const grantMonthlyMutation = useMutation({
+    mutationFn: async ({
+      principal,
+      months,
+    }: {
+      principal: Principal;
+      months: number;
+    }) => {
+      if (!actor) throw new Error("Actor not initialized");
+      return actor.grantMonthlyAccess(principal, BigInt(months));
+    },
+    onSuccess: (_, { months }) => {
+      queryClient.invalidateQueries({ queryKey: ["allMonthlySubscriptions"] });
+      toast.success(`Monthly access granted for ${months} month(s)`);
+    },
+    onError: () => toast.error("Failed to grant monthly access"),
+  });
+
+  const revokeMonthlyMutation = useMutation({
+    mutationFn: async (principal: Principal) => {
+      if (!actor) throw new Error("Actor not initialized");
+      return actor.revokeMonthlyAccess(principal);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allMonthlySubscriptions"] });
+      toast.success("Monthly access revoked");
+    },
+    onError: () => toast.error("Failed to revoke monthly access"),
   });
 
   if (isAdminLoading || isFetching) {
@@ -268,6 +324,7 @@ export function AdminPage() {
                     {tabApplications.map(([principal, ps], idx) => {
                       const principalStr = principal.toString();
                       const freshCode = newCodes[principalStr];
+                      const months = grantMonths[principalStr] ?? 1;
                       return (
                         <div
                           key={principalStr}
@@ -378,6 +435,55 @@ export function AdminPage() {
                                 </div>
                               </div>
                             )}
+
+                          {/* Grant Monthly Access */}
+                          <div className="rounded-md bg-blue-500/5 border border-blue-500/20 p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Calendar className="h-3.5 w-3.5 text-blue-400" />
+                              <span className="text-xs font-medium text-blue-400">
+                                Grant Monthly Access
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                max={12}
+                                value={months}
+                                onChange={(e) =>
+                                  setGrantMonths((prev) => ({
+                                    ...prev,
+                                    [principalStr]: Math.min(
+                                      12,
+                                      Math.max(1, Number(e.target.value)),
+                                    ),
+                                  }))
+                                }
+                                className="w-20 h-7 text-xs"
+                                data-ocid={`admin.input.${idx + 1}`}
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-blue-500/40 text-blue-400 hover:bg-blue-500/10"
+                                data-ocid={`admin.secondary_button.${idx + 1}`}
+                                onClick={() =>
+                                  grantMonthlyMutation.mutate({
+                                    principal,
+                                    months,
+                                  })
+                                }
+                                disabled={grantMonthlyMutation.isPending}
+                              >
+                                {grantMonthlyMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                ) : (
+                                  <UserCheck className="h-3 w-3 mr-1" />
+                                )}
+                                Grant {months} Month{months !== 1 ? "s" : ""}
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -386,6 +492,101 @@ export function AdminPage() {
               </TabsContent>
             ))}
           </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Monthly Subscriptions */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <CardTitle className="text-base">Monthly Subscriptions</CardTitle>
+            {monthlySubscriptions.length > 0 && (
+              <Badge className="ml-auto bg-primary/20 text-primary border-primary/30">
+                {monthlySubscriptions.length} active
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Users with active time-based premium access
+          </p>
+        </CardHeader>
+        <CardContent>
+          {subsLoading ? (
+            <div
+              className="flex justify-center py-8"
+              data-ocid="admin.loading_state"
+            >
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : monthlySubscriptions.length === 0 ? (
+            <div
+              className="flex flex-col items-center py-10 text-center gap-2"
+              data-ocid="admin.empty_state"
+            >
+              <Calendar className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-muted-foreground text-sm">
+                No active monthly subscribers
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {monthlySubscriptions.map(([principal, expiryNs], idx) => {
+                const principalStr = principal.toString();
+                const expiryDate = formatExpiry(expiryNs);
+                const isExpired = Number(expiryNs / 1_000_000n) < Date.now();
+                return (
+                  <div
+                    key={principalStr}
+                    data-ocid={`admin.row.${idx + 1}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-4 py-3"
+                  >
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs text-muted-foreground truncate">
+                          {principalStr.slice(0, 24)}...
+                        </span>
+                        {isExpired ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-destructive/50 text-destructive"
+                          >
+                            Expired
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-green-500/50 text-green-500"
+                          >
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>Expires: {expiryDate}</span>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 h-7 text-xs"
+                      data-ocid={`admin.delete_button.${idx + 1}`}
+                      onClick={() => revokeMonthlyMutation.mutate(principal)}
+                      disabled={revokeMonthlyMutation.isPending}
+                    >
+                      {revokeMonthlyMutation.isPending ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <UserX className="h-3 w-3 mr-1" />
+                      )}
+                      Revoke
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,17 +1,19 @@
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
+import Int "mo:core/Int";
 import Float "mo:core/Float";
 import Array "mo:core/Array";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
-import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
-
 import Iter "mo:core/Iter";
 import Time "mo:core/Time";
 
+import AccessControl "authorization/access-control";
+import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -85,6 +87,7 @@ actor {
     displayName : ?Text;
     identityCode : Text;
     appliedAt : Int;
+    monthlyExpiry : ?Int;
   };
 
   public type WheelData = {
@@ -107,7 +110,8 @@ actor {
   let isPremium = Map.empty<Principal, Bool>();
   let userWheelData = Map.empty<Principal, WheelData>();
 
-  // Wheel title pools
+  let monthlySubscriptions = Map.empty<Principal, Int>();
+
   let commonTitles : [Text] = [
     "Rookie Grinder",
     "Task Tackler",
@@ -1439,7 +1443,6 @@ actor {
   public shared ({ caller }) func updatePublicUserStats(stats : PublicUserStats) : async () {
     verifyUserAccess(caller);
     publicUserStats.add(caller, stats);
-    // Sync free spins based on highest streak
     let totalEarned = stats.highestStreak / 10;
     let existing = switch (userWheelData.get(caller)) {
       case (null) { { totalSpinsEarned = 0; totalSpinsUsed = 0; earnedTitles = [] } };
@@ -1473,8 +1476,6 @@ actor {
       }
     );
   };
-
-  /////////// WHEEL SPIN SYSTEM ///////////
 
   public query ({ caller }) func getMyWheelData() : async WheelData {
     verifyUserAccess(caller);
@@ -1531,7 +1532,6 @@ actor {
 
   /////////// PREMIUM SECTION ///////////
 
-  // generate user's unique identity code from principal
   func createIdentityCode(p : Principal) : Text {
     let principalText = p.toText();
     var sum = 0;
@@ -1575,6 +1575,7 @@ actor {
       displayName = ?displayName;
       identityCode = createIdentityCode(caller);
       appliedAt = Time.now();
+      monthlyExpiry = null;
     };
     premiumStatus.add(caller, premium);
     premiumApplicationsVersion += 1;
@@ -1630,10 +1631,20 @@ actor {
   };
 
   public query ({ caller }) func isCallerPremium() : async Bool {
-    switch (isPremium.get(caller)) {
+    // Check permanent premium status
+    let hasPermanentPremium = switch (isPremium.get(caller)) {
       case (null) { false };
       case (?status) { status };
     };
+    
+    // Check monthly subscription status
+    let hasActiveMonthly = switch (monthlySubscriptions.get(caller)) {
+      case (null) { false };
+      case (?expiry) { Time.now() < expiry };
+    };
+    
+    // Return true if either is active
+    hasPermanentPremium or hasActiveMonthly;
   };
 
   public query ({ caller }) func getUniversalMasterCode() : async Text {
@@ -1707,8 +1718,41 @@ actor {
       displayName = null;
       identityCode = createIdentityCode(caller);
       appliedAt = Time.now();
+      monthlyExpiry = null;
     };
     premiumStatus.add(caller, newPremium);
     premiumApplicationsVersion += 1;
+  };
+
+  // NEW MONTHLY SUBSCRIPTION FUNCTIONS
+
+  public shared ({ caller }) func grantMonthlyAccess(user : Principal, months : Nat) : async () {
+    verifyAdminAccess(caller);
+    let currentTime = Time.now();
+    let additionalTime = months * 30 * 24 * 60 * 60 * 1_000_000_000;
+    let newExpiry = currentTime + additionalTime;
+    monthlySubscriptions.add(user, newExpiry);
+  };
+
+  public shared ({ caller }) func revokeMonthlyAccess(user : Principal) : async () {
+    verifyAdminAccess(caller);
+    monthlySubscriptions.remove(user);
+  };
+
+  public query ({ caller }) func isCallerMonthlyActive() : async Bool {
+    switch (monthlySubscriptions.get(caller)) {
+      case (null) { false };
+      case (?expiry) { Time.now() < expiry };
+    };
+  };
+
+  public query ({ caller }) func getAllMonthlySubscriptions() : async [(Principal, Int)] {
+    verifyAdminAccess(caller);
+    monthlySubscriptions.toArray();
+  };
+
+  public query ({ caller }) func getUserMonthlyExpiry(user : Principal) : async ?Int {
+    verifyAdminAccess(caller);
+    monthlySubscriptions.get(user);
   };
 };

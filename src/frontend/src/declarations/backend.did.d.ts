@@ -30,6 +30,7 @@ export interface PremiumStatus {
     { 'approved' : null } |
     { 'rejected' : null },
   'appliedAt' : bigint,
+  'monthlyExpiry' : [] | [bigint],
   'displayName' : [] | [string],
   'applied' : boolean,
   'premiumCode' : [] | [string],
@@ -65,6 +66,14 @@ export interface UserProfile { 'name' : string, 'preferences' : [] | [string] }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface WheelData {
+  'totalSpinsUsed' : bigint,
+  'earnedTitles' : Array<string>,
+  'totalSpinsEarned' : bigint,
+}
+export type WheelType = { 'epic' : null } |
+  { 'legendary' : null } |
+  { 'common' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'acceptFriendRequest' : ActorMethod<[Principal], undefined>,
@@ -76,6 +85,7 @@ export interface _SERVICE {
     bigint
   >,
   'deleteTask' : ActorMethod<[bigint], undefined>,
+  'getAllMonthlySubscriptions' : ActorMethod<[], Array<[Principal, bigint]>>,
   'getAllPremiumApplications' : ActorMethod<
     [],
     Array<[Principal, PremiumStatus]>
@@ -87,10 +97,16 @@ export interface _SERVICE {
     Array<CategorySummary>
   >,
   'getCategorySummary' : ActorMethod<[string], [] | [CategorySummary]>,
+  'getEarnedTitlesForUser' : ActorMethod<[Principal], Array<string>>,
+  'getEarnedTitlesForUsers' : ActorMethod<
+    [Array<Principal>],
+    Array<[Principal, Array<string>]>
+  >,
   'getFriendList' : ActorMethod<[], Array<Principal>>,
   'getIncomingRequests' : ActorMethod<[], Array<Principal>>,
   'getMyIdentityCode' : ActorMethod<[], string>,
   'getMyPremiumApplication' : ActorMethod<[], [] | [PremiumStatus]>,
+  'getMyWheelData' : ActorMethod<[], WheelData>,
   'getOutgoingRequests' : ActorMethod<[], Array<Principal>>,
   'getPremiumApplicationsSummary' : ActorMethod<
     [],
@@ -106,17 +122,22 @@ export interface _SERVICE {
   'getTasksForDateRange' : ActorMethod<[string, string], Array<Task>>,
   'getUniversalMasterCode' : ActorMethod<[], string>,
   'getUserIdentityCode' : ActorMethod<[Principal], string>,
+  'getUserMonthlyExpiry' : ActorMethod<[Principal], [] | [bigint]>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'grantMonthlyAccess' : ActorMethod<[Principal, bigint], undefined>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isCallerMonthlyActive' : ActorMethod<[], boolean>,
   'isCallerPremium' : ActorMethod<[], boolean>,
   'isUserPremium' : ActorMethod<[Principal], boolean>,
   'redeemPremiumCode' : ActorMethod<[string], boolean>,
   'rejectPremium' : ActorMethod<[Principal], undefined>,
   'removeFriend' : ActorMethod<[Principal], undefined>,
   'requestPremiumStatus' : ActorMethod<[], undefined>,
+  'revokeMonthlyAccess' : ActorMethod<[Principal], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveCategorySummary' : ActorMethod<[CategorySummary], undefined>,
   'sendFriendRequest' : ActorMethod<[Principal], undefined>,
+  'spinWheel' : ActorMethod<[WheelType], string>,
   'toggleTaskCompletion' : ActorMethod<[bigint], undefined>,
   'updatePublicUserStats' : ActorMethod<[PublicUserStats], undefined>,
   'updateTask' : ActorMethod<

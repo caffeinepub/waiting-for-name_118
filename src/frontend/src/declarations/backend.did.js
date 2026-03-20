@@ -35,6 +35,7 @@ export const PremiumStatus = IDL.Record({
     'rejected' : IDL.Null,
   }),
   'appliedAt' : IDL.Int,
+  'monthlyExpiry' : IDL.Opt(IDL.Int),
   'displayName' : IDL.Opt(IDL.Text),
   'applied' : IDL.Bool,
   'premiumCode' : IDL.Opt(IDL.Text),
@@ -49,6 +50,11 @@ export const CategorySummary = IDL.Record({
   'date' : IDL.Text,
   'completionPercentage' : IDL.Float64,
   'category' : IDL.Text,
+});
+export const WheelData = IDL.Record({
+  'totalSpinsUsed' : IDL.Nat,
+  'earnedTitles' : IDL.Vec(IDL.Text),
+  'totalSpinsEarned' : IDL.Nat,
 });
 export const PublicUserStats = IDL.Record({
   'displayName' : IDL.Text,
@@ -74,6 +80,11 @@ export const Task = IDL.Record({
   'estimatedDuration' : IDL.Nat,
   'priority' : Priority,
 });
+export const WheelType = IDL.Variant({
+  'epic' : IDL.Null,
+  'legendary' : IDL.Null,
+  'common' : IDL.Null,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -87,6 +98,11 @@ export const idlService = IDL.Service({
       [],
     ),
   'deleteTask' : IDL.Func([IDL.Nat], [], []),
+  'getAllMonthlySubscriptions' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Int))],
+      ['query'],
+    ),
   'getAllPremiumApplications' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Principal, PremiumStatus))],
@@ -104,10 +120,21 @@ export const idlService = IDL.Service({
       [IDL.Opt(CategorySummary)],
       ['query'],
     ),
+  'getEarnedTitlesForUser' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(IDL.Text)],
+      ['query'],
+    ),
+  'getEarnedTitlesForUsers' : IDL.Func(
+      [IDL.Vec(IDL.Principal)],
+      [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Vec(IDL.Text)))],
+      ['query'],
+    ),
   'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'getMyIdentityCode' : IDL.Func([], [IDL.Text], ['query']),
   'getMyPremiumApplication' : IDL.Func([], [IDL.Opt(PremiumStatus)], ['query']),
+  'getMyWheelData' : IDL.Func([], [WheelData], ['query']),
   'getOutgoingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'getPremiumApplicationsSummary' : IDL.Func(
       [],
@@ -133,21 +160,30 @@ export const idlService = IDL.Service({
     ),
   'getUniversalMasterCode' : IDL.Func([], [IDL.Text], ['query']),
   'getUserIdentityCode' : IDL.Func([IDL.Principal], [IDL.Text], ['query']),
+  'getUserMonthlyExpiry' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(IDL.Int)],
+      ['query'],
+    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
+  'grantMonthlyAccess' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCallerMonthlyActive' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerPremium' : IDL.Func([], [IDL.Bool], ['query']),
   'isUserPremium' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
   'redeemPremiumCode' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'rejectPremium' : IDL.Func([IDL.Principal], [], []),
   'removeFriend' : IDL.Func([IDL.Principal], [], []),
   'requestPremiumStatus' : IDL.Func([], [], []),
+  'revokeMonthlyAccess' : IDL.Func([IDL.Principal], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
   'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
+  'spinWheel' : IDL.Func([WheelType], [IDL.Text], []),
   'toggleTaskCompletion' : IDL.Func([IDL.Nat], [], []),
   'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),
   'updateTask' : IDL.Func(
@@ -187,6 +223,7 @@ export const idlFactory = ({ IDL }) => {
       'rejected' : IDL.Null,
     }),
     'appliedAt' : IDL.Int,
+    'monthlyExpiry' : IDL.Opt(IDL.Int),
     'displayName' : IDL.Opt(IDL.Text),
     'applied' : IDL.Bool,
     'premiumCode' : IDL.Opt(IDL.Text),
@@ -201,6 +238,11 @@ export const idlFactory = ({ IDL }) => {
     'date' : IDL.Text,
     'completionPercentage' : IDL.Float64,
     'category' : IDL.Text,
+  });
+  const WheelData = IDL.Record({
+    'totalSpinsUsed' : IDL.Nat,
+    'earnedTitles' : IDL.Vec(IDL.Text),
+    'totalSpinsEarned' : IDL.Nat,
   });
   const PublicUserStats = IDL.Record({
     'displayName' : IDL.Text,
@@ -226,6 +268,11 @@ export const idlFactory = ({ IDL }) => {
     'estimatedDuration' : IDL.Nat,
     'priority' : Priority,
   });
+  const WheelType = IDL.Variant({
+    'epic' : IDL.Null,
+    'legendary' : IDL.Null,
+    'common' : IDL.Null,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -239,6 +286,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'deleteTask' : IDL.Func([IDL.Nat], [], []),
+    'getAllMonthlySubscriptions' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Int))],
+        ['query'],
+      ),
     'getAllPremiumApplications' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Principal, PremiumStatus))],
@@ -256,6 +308,16 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(CategorySummary)],
         ['query'],
       ),
+    'getEarnedTitlesForUser' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(IDL.Text)],
+        ['query'],
+      ),
+    'getEarnedTitlesForUsers' : IDL.Func(
+        [IDL.Vec(IDL.Principal)],
+        [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Vec(IDL.Text)))],
+        ['query'],
+      ),
     'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'getMyIdentityCode' : IDL.Func([], [IDL.Text], ['query']),
@@ -264,6 +326,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(PremiumStatus)],
         ['query'],
       ),
+    'getMyWheelData' : IDL.Func([], [WheelData], ['query']),
     'getOutgoingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'getPremiumApplicationsSummary' : IDL.Func(
         [],
@@ -289,21 +352,30 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getUniversalMasterCode' : IDL.Func([], [IDL.Text], ['query']),
     'getUserIdentityCode' : IDL.Func([IDL.Principal], [IDL.Text], ['query']),
+    'getUserMonthlyExpiry' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(IDL.Int)],
+        ['query'],
+      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
+    'grantMonthlyAccess' : IDL.Func([IDL.Principal, IDL.Nat], [], []),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCallerMonthlyActive' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerPremium' : IDL.Func([], [IDL.Bool], ['query']),
     'isUserPremium' : IDL.Func([IDL.Principal], [IDL.Bool], ['query']),
     'redeemPremiumCode' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'rejectPremium' : IDL.Func([IDL.Principal], [], []),
     'removeFriend' : IDL.Func([IDL.Principal], [], []),
     'requestPremiumStatus' : IDL.Func([], [], []),
+    'revokeMonthlyAccess' : IDL.Func([IDL.Principal], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
     'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
+    'spinWheel' : IDL.Func([WheelType], [IDL.Text], []),
     'toggleTaskCompletion' : IDL.Func([IDL.Nat], [], []),
     'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),
     'updateTask' : IDL.Func(
