@@ -7,24 +7,299 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useActor } from "@/hooks/useActor";
 import {
   useDuplicateRoutine,
   useDuplicateWeekRoutine,
 } from "@/hooks/useQueries";
 import { getTodayDateString } from "@/utils/taskCalculations";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { addDays, addWeeks, endOfWeek, format, startOfWeek } from "date-fns";
-import { Check, Copy, Crown, Lock } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  Copy,
+  Crown,
+  Loader2,
+  Lock,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+
+type CategoryKey =
+  | "work"
+  | "study"
+  | "fitness"
+  | "health"
+  | "personalDevelopment"
+  | "social"
+  | "other";
+type PriorityKey = "low" | "medium" | "high";
+
+const CATEGORIES: { value: CategoryKey; label: string }[] = [
+  { value: "work", label: "Work" },
+  { value: "study", label: "Study" },
+  { value: "fitness", label: "Fitness" },
+  { value: "health", label: "Health" },
+  { value: "personalDevelopment", label: "Personal Development" },
+  { value: "social", label: "Social" },
+  { value: "other", label: "Other" },
+];
+
+const PRIORITIES: { value: PriorityKey; label: string; color: string }[] = [
+  { value: "low", label: "Low", color: "text-green-400" },
+  { value: "medium", label: "Medium", color: "text-yellow-400" },
+  { value: "high", label: "High", color: "text-red-400" },
+];
+
+function PlanTomorrowSection() {
+  const { actor, isFetching } = useActor();
+  const queryClient = useQueryClient();
+  const tomorrowDate = format(addDays(new Date(), 1), "yyyy-MM-dd");
+
+  const [taskName, setTaskName] = useState("");
+  const [category, setCategory] = useState<CategoryKey>("work");
+  const [priority, setPriority] = useState<PriorityKey>("medium");
+  const [duration, setDuration] = useState(30);
+
+  const { data: tomorrowTasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["tasks", tomorrowDate],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getTasksForDate(tomorrowDate);
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 10000,
+  });
+
+  const addTaskMutation = useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error("Not connected");
+      const categoryEnum = { [category]: null } as any;
+      const priorityEnum = { [priority]: null } as any;
+      await actor.createTask(
+        taskName.trim(),
+        categoryEnum,
+        priorityEnum,
+        BigInt(duration * 60),
+        tomorrowDate,
+        BigInt(Date.now() * 1000000),
+      );
+    },
+    onSuccess: () => {
+      toast.success("Task added for tomorrow!");
+      setTaskName("");
+      setCategory("work");
+      setPriority("medium");
+      setDuration(30);
+      queryClient.invalidateQueries({ queryKey: ["tasks", tomorrowDate] });
+    },
+    onError: () => toast.error("Failed to add task"),
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      await actor.deleteTask(taskId);
+    },
+    onSuccess: () => {
+      toast.success("Task removed");
+      queryClient.invalidateQueries({ queryKey: ["tasks", tomorrowDate] });
+    },
+    onError: () => toast.error("Failed to delete task"),
+  });
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5 text-primary" />
+          Plan Tomorrow
+        </CardTitle>
+        <CardDescription>
+          Pre-set tasks for {format(addDays(new Date(), 1), "EEEE, MMM d")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {/* Form */}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="tomorrow-task-name">Task Name</Label>
+            <Input
+              id="tomorrow-task-name"
+              placeholder="e.g. Morning run, Deep work session..."
+              value={taskName}
+              onChange={(e) => setTaskName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && taskName.trim()) {
+                  addTaskMutation.mutate();
+                }
+              }}
+              data-ocid="routine.tomorrow.input"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <Select
+                value={category}
+                onValueChange={(v) => setCategory(v as CategoryKey)}
+              >
+                <SelectTrigger data-ocid="routine.tomorrow.category.select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Priority</Label>
+              <Select
+                value={priority}
+                onValueChange={(v) => setPriority(v as PriorityKey)}
+              >
+                <SelectTrigger data-ocid="routine.tomorrow.priority.select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITIES.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      <span className={p.color}>{p.label}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="tomorrow-duration">Duration (minutes)</Label>
+            <Input
+              id="tomorrow-duration"
+              type="number"
+              min={1}
+              max={480}
+              value={duration}
+              onChange={(e) =>
+                setDuration(Math.max(1, Number.parseInt(e.target.value) || 1))
+              }
+              data-ocid="routine.tomorrow.duration.input"
+            />
+          </div>
+
+          <Button
+            onClick={() => addTaskMutation.mutate()}
+            disabled={!taskName.trim() || addTaskMutation.isPending}
+            className="w-full gap-2"
+            data-ocid="routine.tomorrow.add_button"
+          >
+            {addTaskMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Adding...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Add to Tomorrow
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Tomorrow's task list */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+            Tomorrow's Plan{" "}
+            <span className="text-foreground">({tomorrowTasks.length})</span>
+          </h3>
+          {tasksLoading ? (
+            <div
+              className="flex items-center gap-2 text-muted-foreground py-4"
+              data-ocid="routine.tomorrow.loading_state"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading tasks...</span>
+            </div>
+          ) : tomorrowTasks.length === 0 ? (
+            <div
+              className="text-center py-6 rounded-lg border border-dashed border-border/50"
+              data-ocid="routine.tomorrow.empty_state"
+            >
+              <CalendarDays className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No tasks planned yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2" data-ocid="routine.tomorrow.list">
+              {tomorrowTasks.map((task, idx) => {
+                const priorityInfo = PRIORITIES.find(
+                  (p) => (task.priority as unknown as string) === p.value,
+                );
+                return (
+                  <div
+                    key={task.id.toString()}
+                    data-ocid={`routine.tomorrow.item.${idx + 1}`}
+                    className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {task.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {Math.round(Number(task.estimatedDuration) / 60)} min
+                        {priorityInfo && (
+                          <span className={`ml-2 ${priorityInfo.color}`}>
+                            {priorityInfo.label}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => deleteTaskMutation.mutate(task.id)}
+                      disabled={deleteTaskMutation.isPending}
+                      data-ocid={`routine.tomorrow.delete_button.${idx + 1}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function RoutinePage() {
   const [targetDate, setTargetDate] = useState<Date | undefined>(undefined);
@@ -284,6 +559,9 @@ export function RoutinePage() {
         </Card>
       </div>
 
+      {/* Plan Tomorrow section */}
+      <PlanTomorrowSection />
+
       <Card className="border-primary/20 bg-primary/5">
         <CardHeader>
           <CardTitle>How It Works</CardTitle>
@@ -309,6 +587,13 @@ export function RoutinePage() {
               <span>
                 <strong>Copy Entire Week:</strong> Duplicate your entire week's
                 schedule to the following week
+              </span>
+            </p>
+            <p className="flex items-start gap-2">
+              <span className="text-primary">•</span>
+              <span>
+                <strong>Plan Tomorrow:</strong> Manually add specific tasks you
+                want to tackle tomorrow
               </span>
             </p>
             <p className="mt-4 text-muted-foreground">

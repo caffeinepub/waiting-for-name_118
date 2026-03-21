@@ -7,20 +7,6 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface PremiumStatus {
-    identityCode: string;
-    status: Variant_pending_approved_rejected;
-    appliedAt: bigint;
-    monthlyExpiry?: bigint;
-    displayName?: string;
-    applied: boolean;
-    premiumCode?: string;
-}
-export interface WheelData {
-    totalSpinsUsed: bigint;
-    earnedTitles: Array<string>;
-    totalSpinsEarned: bigint;
-}
 export interface CategorySummary {
     totalTasks: bigint;
     completedTasks: bigint;
@@ -38,16 +24,15 @@ export interface Task {
     estimatedDuration: bigint;
     priority: Priority;
 }
-export interface PublicUserStats {
+export interface FriendPublicProfile {
     displayName: string;
+    earnedTitles: Array<string>;
     highestStreak: bigint;
+    activeTitle?: string;
     level: bigint;
+    profilePictureUrl?: string;
     currentStreak: bigint;
     totalTaskCompletions: bigint;
-}
-export interface UserProfile {
-    name: string;
-    preferences?: string;
 }
 export interface TaskSuggestion {
     name: string;
@@ -55,6 +40,32 @@ export interface TaskSuggestion {
     estimatedDuration: bigint;
     priority: Priority;
     reason: string;
+}
+export interface PremiumStatus {
+    identityCode: string;
+    status: Variant_pending_approved_rejected;
+    appliedAt: bigint;
+    monthlyExpiry?: bigint;
+    displayName?: string;
+    applied: boolean;
+    premiumCode?: string;
+}
+export interface WheelData {
+    totalSpinsUsed: bigint;
+    earnedTitles: Array<string>;
+    totalSpinsEarned: bigint;
+}
+export interface PublicUserStats {
+    displayName: string;
+    highestStreak: bigint;
+    activeTitle?: string;
+    level: bigint;
+    currentStreak: bigint;
+    totalTaskCompletions: bigint;
+}
+export interface UserProfile {
+    name: string;
+    preferences?: string;
 }
 export enum Category {
     social = "social",
@@ -92,6 +103,7 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createTask(name: string, category: Category, priority: Priority, estimatedDuration: bigint, date: string, createdAt: bigint): Promise<bigint>;
     deleteTask(taskId: bigint): Promise<void>;
+    getActiveTitle(user: Principal): Promise<string | null>;
     getAllMonthlySubscriptions(): Promise<Array<[Principal, bigint]>>;
     getAllPremiumApplications(): Promise<Array<[Principal, PremiumStatus]>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -101,6 +113,7 @@ export interface backendInterface {
     getEarnedTitlesForUser(user: Principal): Promise<Array<string>>;
     getEarnedTitlesForUsers(users: Array<Principal>): Promise<Array<[Principal, Array<string>]>>;
     getFriendList(): Promise<Array<Principal>>;
+    getFriendPublicProfile(friend: Principal): Promise<FriendPublicProfile | null>;
     getIncomingRequests(): Promise<Array<Principal>>;
     getMyIdentityCode(): Promise<string>;
     getMyPremiumApplication(): Promise<PremiumStatus | null>;
@@ -108,6 +121,7 @@ export interface backendInterface {
     getOutgoingRequests(): Promise<Array<Principal>>;
     getPremiumApplicationsSummary(): Promise<[bigint, Array<[Principal, PremiumStatus]>]>;
     getPremiumStatus(user: Principal): Promise<PremiumStatus | null>;
+    getProfilePicture(user: Principal): Promise<string | null>;
     getPublicStatsForUsers(users: Array<Principal>): Promise<Array<[Principal, PublicUserStats]>>;
     getTaskSuggestions(): Promise<Array<TaskSuggestion>>;
     getTasksForDate(date: string): Promise<Array<Task>>;
@@ -129,6 +143,8 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveCategorySummary(summary: CategorySummary): Promise<void>;
     sendFriendRequest(userId: Principal): Promise<void>;
+    setActiveTitle(title: string): Promise<void>;
+    setProfilePicture(url: string): Promise<void>;
     spinWheel(wheelType: WheelType): Promise<string>;
     toggleTaskCompletion(taskId: bigint): Promise<void>;
     updatePublicUserStats(stats: PublicUserStats): Promise<void>;

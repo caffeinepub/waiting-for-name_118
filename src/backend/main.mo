@@ -8,13 +8,16 @@ import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Time "mo:core/Time";
+import Migration "migration";
 
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
+import MixinStorage "blob-storage/Mixin";
+import Storage "blob-storage/Storage";
 
 (with migration = Migration.run)
 actor {
+  include MixinStorage();
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
@@ -78,6 +81,7 @@ actor {
     highestStreak : Nat;
     totalTaskCompletions : Nat;
     level : Nat;
+    activeTitle : ?Text;
   };
 
   public type PremiumStatus = {
@@ -109,6 +113,7 @@ actor {
   let premiumStatus = Map.empty<Principal, PremiumStatus>();
   let isPremium = Map.empty<Principal, Bool>();
   let userWheelData = Map.empty<Principal, WheelData>();
+  let userProfilePictures = Map.empty<Principal, Text>();
 
   let monthlySubscriptions = Map.empty<Principal, Int>();
 
@@ -1442,7 +1447,6 @@ actor {
 
   public shared ({ caller }) func updatePublicUserStats(stats : PublicUserStats) : async () {
     verifyUserAccess(caller);
-    publicUserStats.add(caller, stats);
     let totalEarned = stats.highestStreak / 10;
     let existing = switch (userWheelData.get(caller)) {
       case (null) { { totalSpinsEarned = 0; totalSpinsUsed = 0; earnedTitles = [] } };
@@ -1450,6 +1454,33 @@ actor {
     };
     if (totalEarned > existing.totalSpinsEarned) {
       userWheelData.add(caller, { existing with totalSpinsEarned = totalEarned });
+    };
+    let existingStats : ?PublicUserStats = publicUserStats.get(caller);
+    let statsWithActiveTitle = switch (existingStats) {
+      case (null) { { stats with activeTitle = null } };
+      case (?existing) { { stats with activeTitle = existing.activeTitle } };
+    };
+    publicUserStats.add(caller, statsWithActiveTitle);
+  };
+
+  public shared ({ caller }) func setActiveTitle(title : Text) : async () {
+    verifyUserAccess(caller);
+    switch (publicUserStats.get(caller)) {
+      case (null) { Runtime.trap("User stats not found") };
+      case (?stats) {
+        let updatedStats : PublicUserStats = {
+          stats with activeTitle = ?title
+        };
+        publicUserStats.add(caller, updatedStats);
+      };
+    };
+  };
+
+  public query ({ caller }) func getActiveTitle(user : Principal) : async ?Text {
+    verifyUserAccess(caller);
+    switch (publicUserStats.get(user)) {
+      case (null) { null };
+      case (?stats) { stats.activeTitle };
     };
   };
 
@@ -1528,6 +1559,17 @@ actor {
       case (null) { [] };
       case (?d) { d.earnedTitles };
     };
+  };
+
+  // Profile picture management - no auth required per spec
+  public shared ({ caller }) func setProfilePicture(url : Text) : async () {
+    verifyUserAccess(caller);
+    userProfilePictures.add(caller, url);
+  };
+
+  // Public access - anyone can view profile pictures per spec
+  public query func getProfilePicture(user : Principal) : async ?Text {
+    userProfilePictures.get(user);
   };
 
   /////////// PREMIUM SECTION ///////////
@@ -1636,13 +1678,13 @@ actor {
       case (null) { false };
       case (?status) { status };
     };
-    
+
     // Check monthly subscription status
     let hasActiveMonthly = switch (monthlySubscriptions.get(caller)) {
       case (null) { false };
       case (?expiry) { Time.now() < expiry };
     };
-    
+
     // Return true if either is active
     hasPermanentPremium or hasActiveMonthly;
   };
@@ -1724,7 +1766,7 @@ actor {
     premiumApplicationsVersion += 1;
   };
 
-  // NEW MONTHLY SUBSCRIPTION FUNCTIONS
+  // MONTHLY SUBSCRIPTION FUNCTIONS
 
   public shared ({ caller }) func grantMonthlyAccess(user : Principal, months : Nat) : async () {
     verifyAdminAccess(caller);
@@ -1754,5 +1796,40 @@ actor {
   public query ({ caller }) func getUserMonthlyExpiry(user : Principal) : async ?Int {
     verifyAdminAccess(caller);
     monthlySubscriptions.get(user);
+  };
+
+  public type FriendPublicProfile = {
+    displayName : Text;
+    currentStreak : Nat;
+    highestStreak : Nat;
+    totalTaskCompletions : Nat;
+    level : Nat;
+    activeTitle : ?Text;
+    earnedTitles : [Text];
+    profilePictureUrl : ?Text;
+  };
+
+  // Public access - anyone can view friend profiles per spec
+  public query func getFriendPublicProfile(friend : Principal) : async ?FriendPublicProfile {
+    let stats = publicUserStats.get(friend);
+    let wheelData = userWheelData.get(friend);
+    let picture = userProfilePictures.get(friend);
+
+    switch (stats, wheelData) {
+      case (null, _) { null };
+      case (_, null) { null };
+      case (?s, ?w) {
+        ?{
+          displayName = s.displayName;
+          currentStreak = s.currentStreak;
+          highestStreak = s.highestStreak;
+          totalTaskCompletions = s.totalTaskCompletions;
+          level = s.level;
+          activeTitle = s.activeTitle;
+          earnedTitles = w.earnedTitles;
+          profilePictureUrl = picture;
+        };
+      };
+    };
   };
 };

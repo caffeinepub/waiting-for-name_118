@@ -8,6 +8,17 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const _CaffeineStorageCreateCertificateResult = IDL.Record({
+  'method' : IDL.Text,
+  'blob_hash' : IDL.Text,
+});
+export const _CaffeineStorageRefillInformation = IDL.Record({
+  'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+});
+export const _CaffeineStorageRefillResult = IDL.Record({
+  'success' : IDL.Opt(IDL.Bool),
+  'topped_up_amount' : IDL.Opt(IDL.Nat),
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -51,6 +62,16 @@ export const CategorySummary = IDL.Record({
   'completionPercentage' : IDL.Float64,
   'category' : IDL.Text,
 });
+export const FriendPublicProfile = IDL.Record({
+  'displayName' : IDL.Text,
+  'earnedTitles' : IDL.Vec(IDL.Text),
+  'highestStreak' : IDL.Nat,
+  'activeTitle' : IDL.Opt(IDL.Text),
+  'level' : IDL.Nat,
+  'profilePictureUrl' : IDL.Opt(IDL.Text),
+  'currentStreak' : IDL.Nat,
+  'totalTaskCompletions' : IDL.Nat,
+});
 export const WheelData = IDL.Record({
   'totalSpinsUsed' : IDL.Nat,
   'earnedTitles' : IDL.Vec(IDL.Text),
@@ -59,6 +80,7 @@ export const WheelData = IDL.Record({
 export const PublicUserStats = IDL.Record({
   'displayName' : IDL.Text,
   'highestStreak' : IDL.Nat,
+  'activeTitle' : IDL.Opt(IDL.Text),
   'level' : IDL.Nat,
   'currentStreak' : IDL.Nat,
   'totalTaskCompletions' : IDL.Nat,
@@ -87,6 +109,32 @@ export const WheelType = IDL.Variant({
 });
 
 export const idlService = IDL.Service({
+  '_caffeineStorageBlobIsLive' : IDL.Func(
+      [IDL.Vec(IDL.Nat8)],
+      [IDL.Bool],
+      ['query'],
+    ),
+  '_caffeineStorageBlobsToDelete' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      ['query'],
+    ),
+  '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+      [IDL.Vec(IDL.Vec(IDL.Nat8))],
+      [],
+      [],
+    ),
+  '_caffeineStorageCreateCertificate' : IDL.Func(
+      [IDL.Text],
+      [_CaffeineStorageCreateCertificateResult],
+      [],
+    ),
+  '_caffeineStorageRefillCashier' : IDL.Func(
+      [IDL.Opt(_CaffeineStorageRefillInformation)],
+      [_CaffeineStorageRefillResult],
+      [],
+    ),
+  '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
   'applyForPremium' : IDL.Func([IDL.Text], [], []),
@@ -98,6 +146,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'deleteTask' : IDL.Func([IDL.Nat], [], []),
+  'getActiveTitle' : IDL.Func([IDL.Principal], [IDL.Opt(IDL.Text)], ['query']),
   'getAllMonthlySubscriptions' : IDL.Func(
       [],
       [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Int))],
@@ -131,6 +180,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getFriendPublicProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(FriendPublicProfile)],
+      ['query'],
+    ),
   'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'getMyIdentityCode' : IDL.Func([], [IDL.Text], ['query']),
   'getMyPremiumApplication' : IDL.Func([], [IDL.Opt(PremiumStatus)], ['query']),
@@ -144,6 +198,11 @@ export const idlService = IDL.Service({
   'getPremiumStatus' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(PremiumStatus)],
+      ['query'],
+    ),
+  'getProfilePicture' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(IDL.Text)],
       ['query'],
     ),
   'getPublicStatsForUsers' : IDL.Func(
@@ -183,6 +242,8 @@ export const idlService = IDL.Service({
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
   'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
+  'setActiveTitle' : IDL.Func([IDL.Text], [], []),
+  'setProfilePicture' : IDL.Func([IDL.Text], [], []),
   'spinWheel' : IDL.Func([WheelType], [IDL.Text], []),
   'toggleTaskCompletion' : IDL.Func([IDL.Nat], [], []),
   'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),
@@ -196,6 +257,17 @@ export const idlService = IDL.Service({
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const _CaffeineStorageCreateCertificateResult = IDL.Record({
+    'method' : IDL.Text,
+    'blob_hash' : IDL.Text,
+  });
+  const _CaffeineStorageRefillInformation = IDL.Record({
+    'proposed_top_up_amount' : IDL.Opt(IDL.Nat),
+  });
+  const _CaffeineStorageRefillResult = IDL.Record({
+    'success' : IDL.Opt(IDL.Bool),
+    'topped_up_amount' : IDL.Opt(IDL.Nat),
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
@@ -239,6 +311,16 @@ export const idlFactory = ({ IDL }) => {
     'completionPercentage' : IDL.Float64,
     'category' : IDL.Text,
   });
+  const FriendPublicProfile = IDL.Record({
+    'displayName' : IDL.Text,
+    'earnedTitles' : IDL.Vec(IDL.Text),
+    'highestStreak' : IDL.Nat,
+    'activeTitle' : IDL.Opt(IDL.Text),
+    'level' : IDL.Nat,
+    'profilePictureUrl' : IDL.Opt(IDL.Text),
+    'currentStreak' : IDL.Nat,
+    'totalTaskCompletions' : IDL.Nat,
+  });
   const WheelData = IDL.Record({
     'totalSpinsUsed' : IDL.Nat,
     'earnedTitles' : IDL.Vec(IDL.Text),
@@ -247,6 +329,7 @@ export const idlFactory = ({ IDL }) => {
   const PublicUserStats = IDL.Record({
     'displayName' : IDL.Text,
     'highestStreak' : IDL.Nat,
+    'activeTitle' : IDL.Opt(IDL.Text),
     'level' : IDL.Nat,
     'currentStreak' : IDL.Nat,
     'totalTaskCompletions' : IDL.Nat,
@@ -275,6 +358,32 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
+    '_caffeineStorageBlobIsLive' : IDL.Func(
+        [IDL.Vec(IDL.Nat8)],
+        [IDL.Bool],
+        ['query'],
+      ),
+    '_caffeineStorageBlobsToDelete' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        ['query'],
+      ),
+    '_caffeineStorageConfirmBlobDeletion' : IDL.Func(
+        [IDL.Vec(IDL.Vec(IDL.Nat8))],
+        [],
+        [],
+      ),
+    '_caffeineStorageCreateCertificate' : IDL.Func(
+        [IDL.Text],
+        [_CaffeineStorageCreateCertificateResult],
+        [],
+      ),
+    '_caffeineStorageRefillCashier' : IDL.Func(
+        [IDL.Opt(_CaffeineStorageRefillInformation)],
+        [_CaffeineStorageRefillResult],
+        [],
+      ),
+    '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
     'applyForPremium' : IDL.Func([IDL.Text], [], []),
@@ -286,6 +395,11 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'deleteTask' : IDL.Func([IDL.Nat], [], []),
+    'getActiveTitle' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(IDL.Text)],
+        ['query'],
+      ),
     'getAllMonthlySubscriptions' : IDL.Func(
         [],
         [IDL.Vec(IDL.Tuple(IDL.Principal, IDL.Int))],
@@ -319,6 +433,11 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getFriendList' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getFriendPublicProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(FriendPublicProfile)],
+        ['query'],
+      ),
     'getIncomingRequests' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'getMyIdentityCode' : IDL.Func([], [IDL.Text], ['query']),
     'getMyPremiumApplication' : IDL.Func(
@@ -336,6 +455,11 @@ export const idlFactory = ({ IDL }) => {
     'getPremiumStatus' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(PremiumStatus)],
+        ['query'],
+      ),
+    'getProfilePicture' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(IDL.Text)],
         ['query'],
       ),
     'getPublicStatsForUsers' : IDL.Func(
@@ -375,6 +499,8 @@ export const idlFactory = ({ IDL }) => {
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'saveCategorySummary' : IDL.Func([CategorySummary], [], []),
     'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
+    'setActiveTitle' : IDL.Func([IDL.Text], [], []),
+    'setProfilePicture' : IDL.Func([IDL.Text], [], []),
     'spinWheel' : IDL.Func([WheelType], [IDL.Text], []),
     'toggleTaskCompletion' : IDL.Func([IDL.Nat], [], []),
     'updatePublicUserStats' : IDL.Func([PublicUserStats], [], []),

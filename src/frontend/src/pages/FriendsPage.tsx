@@ -1,7 +1,14 @@
-import type { PublicUserStats } from "@/backend";
+import type { FriendPublicProfile, PublicUserStats } from "@/backend";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -21,14 +28,20 @@ import {
   Award,
   Check,
   Crown,
+  Flame,
   Loader2,
+  Lock,
   Mail,
   Medal,
   RefreshCw,
+  Shield,
+  Star,
+  Target,
   Trophy,
   UserPlus,
   Users,
   X,
+  Zap,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -109,6 +122,278 @@ function EarnedTitleBadge({ title }: { title: string }) {
   );
 }
 
+interface AchievementDef {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  check: (p: FriendPublicProfile) => boolean;
+  color: string;
+}
+
+const ACHIEVEMENTS: AchievementDef[] = [
+  {
+    id: "first_streak",
+    label: "First Streak",
+    icon: Flame,
+    check: (p) => Number(p.currentStreak) > 0,
+    color: "text-orange-400",
+  },
+  {
+    id: "ten_day",
+    label: "10-Day Warrior",
+    icon: Shield,
+    check: (p) => Number(p.highestStreak) >= 10,
+    color: "text-blue-400",
+  },
+  {
+    id: "thirty_day",
+    label: "30-Day Legend",
+    icon: Crown,
+    check: (p) => Number(p.highestStreak) >= 30,
+    color: "text-amber-400",
+  },
+  {
+    id: "hundred_tasks",
+    label: "100 Tasks Done",
+    icon: Target,
+    check: (p) => Number(p.totalTaskCompletions) >= 100,
+    color: "text-green-400",
+  },
+  {
+    id: "level_5",
+    label: "Level 5+",
+    icon: Star,
+    check: (p) => Number(p.level) >= 5,
+    color: "text-yellow-400",
+  },
+  {
+    id: "title_holder",
+    label: "Title Holder",
+    icon: Trophy,
+    check: (p) => p.earnedTitles.length > 0,
+    color: "text-purple-400",
+  },
+  {
+    id: "epic_title",
+    label: "Epic Achiever",
+    icon: Zap,
+    check: (p) => p.earnedTitles.some((t) => EPIC_TITLES.includes(t)),
+    color: "text-violet-400",
+  },
+  {
+    id: "legendary_title",
+    label: "Legendary",
+    icon: Crown,
+    check: (p) => p.earnedTitles.some((t) => LEGENDARY_TITLES.includes(t)),
+    color: "text-amber-300",
+  },
+];
+
+function FriendProfileModal({
+  principal,
+  open,
+  onClose,
+}: {
+  principal: Principal | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const { actor } = useActor();
+
+  const { data: profile, isLoading } = useQuery<FriendPublicProfile | null>({
+    queryKey: ["friendProfile", principal?.toString()],
+    queryFn: async () => {
+      if (!actor || !principal) return null;
+      return actor.getFriendPublicProfile(principal);
+    },
+    enabled: !!actor && !!principal && open,
+    staleTime: 30000,
+  });
+
+  const displayNameStr = profile?.displayName?.trim()
+    ? profile.displayName
+    : principal
+      ? `${principal.toString().slice(0, 8)}...`
+      : "Unknown";
+
+  const activeTitle = profile?.activeTitle ?? null;
+  const activeTier = activeTitle ? getTitleTier(activeTitle) : null;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="max-w-md w-full max-h-[85vh] overflow-y-auto"
+        data-ocid="friends.profile.dialog"
+      >
+        <DialogHeader>
+          <DialogTitle className="sr-only">Friend Profile</DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div
+            className="space-y-4 py-4"
+            data-ocid="friends.profile.loading_state"
+          >
+            <div className="flex flex-col items-center gap-3">
+              <Skeleton className="h-20 w-20 rounded-full" />
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-16 rounded-lg" />
+              ))}
+            </div>
+          </div>
+        ) : !profile ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Users className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p>Profile not available</p>
+          </div>
+        ) : (
+          <div className="space-y-5 pt-2">
+            {/* Avatar + Name */}
+            <div className="flex flex-col items-center gap-2 text-center">
+              <Avatar className="h-20 w-20 border-2 border-primary/30">
+                {profile.profilePictureUrl && (
+                  <AvatarImage
+                    src={profile.profilePictureUrl}
+                    alt={displayNameStr}
+                  />
+                )}
+                <AvatarFallback className="bg-primary/20 text-primary text-xl font-bold">
+                  {displayNameStr.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-lg font-bold">{displayNameStr}</h2>
+                {activeTitle && (
+                  <div className="mt-1">
+                    {activeTier === "legendary" ? (
+                      <span
+                        className="text-sm font-bold"
+                        style={{
+                          background:
+                            "linear-gradient(90deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0000)",
+                          backgroundSize: "200% 100%",
+                          WebkitBackgroundClip: "text",
+                          WebkitTextFillColor: "transparent",
+                          backgroundClip: "text",
+                          animation: "rainbowSlide 2s linear infinite",
+                        }}
+                      >
+                        👑 {activeTitle}
+                      </span>
+                    ) : activeTier === "epic" ? (
+                      <span
+                        className="text-sm font-bold"
+                        style={{
+                          animation: "epicFlash 1s ease-in-out infinite",
+                          color: "white",
+                        }}
+                      >
+                        ⚡ {activeTitle}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-semibold text-red-400">
+                        ⭐ {activeTitle}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 p-3 text-center">
+                <p className="text-2xl font-black text-orange-400">
+                  {Number(profile.highestStreak)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Highest Streak 🔥
+                </p>
+              </div>
+              <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 text-center">
+                <p className="text-2xl font-black text-blue-400">
+                  {Number(profile.currentStreak)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Current Streak
+                </p>
+              </div>
+              <div className="rounded-xl bg-green-500/10 border border-green-500/20 p-3 text-center">
+                <p className="text-2xl font-black text-green-400">
+                  {Number(profile.totalTaskCompletions).toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Tasks Completed
+                </p>
+              </div>
+              <div className="rounded-xl bg-primary/10 border border-primary/20 p-3 text-center">
+                <p className="text-2xl font-black text-primary">
+                  Lv.{Number(profile.level)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">Level</p>
+              </div>
+            </div>
+
+            {/* Achievements */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
+                Achievements
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                {ACHIEVEMENTS.map((ach) => {
+                  const earned = ach.check(profile);
+                  const Icon = ach.icon;
+                  return (
+                    <div
+                      key={ach.id}
+                      className={`flex flex-col items-center gap-1 rounded-lg p-2 text-center transition-all ${
+                        earned
+                          ? "bg-card border border-border/50"
+                          : "bg-muted/20 opacity-40 grayscale"
+                      }`}
+                      title={ach.label}
+                    >
+                      <Icon
+                        className={`h-5 w-5 ${
+                          earned ? ach.color : "text-muted-foreground"
+                        }`}
+                      />
+                      {!earned && (
+                        <Lock className="h-2.5 w-2.5 text-muted-foreground absolute" />
+                      )}
+                      <span className="text-[9px] leading-tight text-muted-foreground">
+                        {ach.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Earned Titles */}
+            {profile.earnedTitles.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wider">
+                  Titles ({profile.earnedTitles.length})
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.earnedTitles.map((title) => (
+                    <EarnedTitleBadge key={title} title={title} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 interface RankedEntry {
   principal: Principal;
   stats: PublicUserStats & { earnedTitles: string[] };
@@ -173,8 +458,18 @@ export function FriendsPage() {
   const queryClient = useQueryClient();
   const [addInput, setAddInput] = useState("");
   const [activeTab, setActiveTab] = useState("leaderboard");
+  const [selectedPrincipal, setSelectedPrincipal] = useState<Principal | null>(
+    null,
+  );
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const callerPrincipal = identity?.getPrincipal();
+
+  const handleRowClick = (entry: RankedEntry) => {
+    if (entry.isSelf) return; // don't show modal for self
+    setSelectedPrincipal(entry.principal);
+    setProfileModalOpen(true);
+  };
 
   // Sync current user's public stats
   useEffect(() => {
@@ -275,7 +570,6 @@ export function FriendsPage() {
 
       const statsArr = await actor.getPublicStatsForUsers(allUsers);
 
-      // Safely fetch titles -- fallback to empty map if it fails
       let titlesMap = new Map<string, string[]>();
       try {
         const titlesArr = await actor.getEarnedTitlesForUsers(allUsers);
@@ -429,6 +723,13 @@ export function FriendsPage() {
           50% { opacity: 0.4; color: #e0e0ff; }
         }
       `}</style>
+
+      <FriendProfileModal
+        principal={selectedPrincipal}
+        open={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -499,6 +800,11 @@ export function FriendsPage() {
                     </Badge>
                   )}
                 </CardTitle>
+                {!isLoading && leaderboard.some((e) => !e.isSelf) && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Click a friend's row to view their profile
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -571,10 +877,11 @@ export function FriendsPage() {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: idx * 0.05 }}
                                 data-ocid={`friends.leaderboard.item.${idx + 1}`}
+                                onClick={() => handleRowClick(entry)}
                                 className={`border-border/50 transition-colors ${
                                   entry.isSelf
                                     ? "bg-primary/10 hover:bg-primary/15"
-                                    : "hover:bg-accent/50"
+                                    : "hover:bg-accent/50 cursor-pointer"
                                 }`}
                               >
                                 <TableCell className="font-medium">
@@ -614,6 +921,11 @@ export function FriendsPage() {
                                           >
                                             You
                                           </Badge>
+                                        )}
+                                        {!entry.isSelf && (
+                                          <span className="text-xs text-muted-foreground/50 hidden sm:inline">
+                                            (tap to view)
+                                          </span>
                                         )}
                                       </div>
                                       {bestTitle && (

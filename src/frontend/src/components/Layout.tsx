@@ -1,4 +1,4 @@
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,14 +11,17 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useActor } from "@/hooks/useActor";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { useProfilePicture } from "@/hooks/useProfilePicture";
 import { useGetCallerUserProfile } from "@/hooks/useQueries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet } from "@tanstack/react-router";
 import {
+  Camera,
   Copy,
   Crown,
   History,
   Home,
+  Loader2,
   LogOut,
   Menu,
   Moon,
@@ -30,7 +33,8 @@ import {
   Users,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 export function Layout() {
   const { theme, setTheme } = useTheme();
@@ -39,6 +43,9 @@ export function Layout() {
   const queryClient = useQueryClient();
   const { actor, isFetching } = useActor();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { profilePictureUrl, uploadProfilePicture, isUploading } =
+    useProfilePicture();
 
   const isLoggedIn = !!identity;
 
@@ -66,6 +73,19 @@ export function Layout() {
       .slice(0, 2);
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await uploadProfilePicture(file);
+      toast.success("Profile picture updated!");
+    } catch {
+      toast.error("Failed to upload photo");
+    }
+    // Reset the input so the same file can be re-selected
+    e.target.value = "";
+  };
+
   const navigation = [
     { name: "Dashboard", href: "/", icon: Home },
     { name: "Weekly", href: "/weekly", icon: TrendingUp },
@@ -80,6 +100,14 @@ export function Layout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+        data-ocid="profile.upload_button"
+      />
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between gap-2">
           {/* Logo */}
@@ -133,6 +161,12 @@ export function Layout() {
                     className="flex items-center gap-2 h-9 px-2"
                   >
                     <Avatar className="h-7 w-7">
+                      {profilePictureUrl && (
+                        <AvatarImage
+                          src={profilePictureUrl}
+                          alt={userProfile.name}
+                        />
+                      )}
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                         {getInitials(userProfile.name)}
                       </AvatarFallback>
@@ -151,6 +185,20 @@ export function Layout() {
                       </p>
                     </div>
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => fileInputRef.current?.click()}
+                    className="cursor-pointer"
+                    disabled={isUploading}
+                    data-ocid="profile.photo.button"
+                  >
+                    {isUploading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Camera className="mr-2 h-4 w-4" />
+                    )}
+                    {isUploading ? "Uploading..." : "Upload Photo"}
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleLogout}
@@ -218,6 +266,12 @@ export function Layout() {
                     <div className="border-t border-border/40 px-4 py-4">
                       <div className="flex items-center gap-3 mb-3">
                         <Avatar className="h-8 w-8">
+                          {profilePictureUrl && (
+                            <AvatarImage
+                              src={profilePictureUrl}
+                              alt={userProfile.name}
+                            />
+                          )}
                           <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
                             {getInitials(userProfile.name)}
                           </AvatarFallback>
@@ -230,6 +284,20 @@ export function Layout() {
                             {identity?.getPrincipal().toString().slice(0, 8)}...
                           </p>
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 ml-auto shrink-0"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isUploading}
+                          title="Upload photo"
+                        >
+                          {isUploading ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Camera className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
                       </div>
                       <Button
                         variant="outline"

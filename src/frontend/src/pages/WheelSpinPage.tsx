@@ -2,8 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useActor } from "@/hooks/useActor";
+import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Crown, Loader2, Sparkles, Star, Zap } from "lucide-react";
+import { Check, Crown, Loader2, Sparkles, Star, Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +19,8 @@ interface WheelActor {
     totalSpinsUsed: bigint;
     earnedTitles: string[];
   }>;
+  getActiveTitle(user: Principal): Promise<string | null>;
+  setActiveTitle(title: string): Promise<void>;
 }
 
 const WHEEL_CONFIGS = {
@@ -213,7 +217,7 @@ function WheelCanvas({
                   transform={`rotate(${(midAngle * 180) / Math.PI + 90}, ${tx}, ${ty})`}
                   style={{ pointerEvents: "none" }}
                 >
-                  {seg.length > 10 ? `${seg.slice(0, 10)}…` : seg}
+                  {seg.length > 10 ? `${seg.slice(0, 10)}\u2026` : seg}
                 </text>
               </g>
             );
@@ -396,6 +400,8 @@ export function WheelSpinPage() {
   const { actor, isFetching } = useActor();
   const wheelActor = actor as unknown as WheelActor | null;
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
+  const principal = identity?.getPrincipal();
 
   const { data: wheelData } = useQuery({
     queryKey: ["myWheelData"],
@@ -405,12 +411,35 @@ export function WheelSpinPage() {
     },
     enabled: !!actor && !isFetching,
     staleTime: 10000,
-    // Show placeholder data while loading so the page renders immediately
     placeholderData: {
       totalSpinsEarned: 0n,
       totalSpinsUsed: 0n,
       earnedTitles: [],
     },
+  });
+
+  const { data: activeTitle } = useQuery<string | null>({
+    queryKey: ["activeTitle", principal?.toString()],
+    queryFn: async () => {
+      if (!wheelActor || !principal) return null;
+      return wheelActor.getActiveTitle(principal);
+    },
+    enabled: !!actor && !isFetching && !!principal,
+    staleTime: 10000,
+  });
+
+  const setActiveTitleMutation = useMutation({
+    mutationFn: async (title: string) => {
+      if (!wheelActor) throw new Error("Not connected");
+      await wheelActor.setActiveTitle(title);
+    },
+    onSuccess: (_data, title) => {
+      toast.success(`"${title}" is now your active title!`);
+      queryClient.invalidateQueries({
+        queryKey: ["activeTitle", principal?.toString()],
+      });
+    },
+    onError: () => toast.error("Failed to set title"),
   });
 
   const freeSpins = wheelData
@@ -537,49 +566,76 @@ export function WheelSpinPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2">
                 {earnedTitles.map((title) => {
                   const tier = getTitleTier(title);
-                  if (tier === "legendary") {
-                    return (
-                      <span
-                        key={title}
-                        className="text-sm px-3 py-1 rounded-full border border-amber-400/40 font-bold inline-block"
-                        style={{
-                          background:
-                            "linear-gradient(90deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0000)",
-                          backgroundSize: "200% 100%",
-                          WebkitBackgroundClip: "text",
-                          WebkitTextFillColor: "transparent",
-                          backgroundClip: "text",
-                          animation: "rainbowSlide 2s linear infinite",
-                        }}
-                      >
-                        👑 {title}
-                      </span>
-                    );
-                  }
-                  if (tier === "epic") {
-                    return (
-                      <span
-                        key={title}
-                        className="text-sm px-3 py-1 rounded-full border border-violet-500/40 font-bold inline-block"
-                        style={{
-                          animation: "epicFlash 1s ease-in-out infinite",
-                          color: "white",
-                        }}
-                      >
-                        ⚡ {title}
-                      </span>
-                    );
-                  }
+                  const isActive = activeTitle === title;
+
                   return (
-                    <span
+                    <div
                       key={title}
-                      className="text-sm px-3 py-1 rounded-full border border-red-500/40 font-semibold text-red-400"
+                      className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 border transition-all ${
+                        isActive
+                          ? "border-primary/50 bg-primary/10"
+                          : "border-border/40 bg-muted/20"
+                      }`}
                     >
-                      ⭐ {title}
-                    </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {isActive && (
+                          <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                        )}
+                        {tier === "legendary" ? (
+                          <span
+                            className="text-sm font-bold"
+                            style={{
+                              background:
+                                "linear-gradient(90deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff0000)",
+                              backgroundSize: "200% 100%",
+                              WebkitBackgroundClip: "text",
+                              WebkitTextFillColor: "transparent",
+                              backgroundClip: "text",
+                              animation: "rainbowSlide 2s linear infinite",
+                            }}
+                          >
+                            👑 {title}
+                          </span>
+                        ) : tier === "epic" ? (
+                          <span
+                            className="text-sm font-bold"
+                            style={{
+                              animation: "epicFlash 1s ease-in-out infinite",
+                              color: "white",
+                            }}
+                          >
+                            ⚡ {title}
+                          </span>
+                        ) : (
+                          <span className="text-sm font-semibold text-red-400">
+                            ⭐ {title}
+                          </span>
+                        )}
+                        {isActive && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs py-0 h-4 ml-1 shrink-0"
+                          >
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant={isActive ? "secondary" : "outline"}
+                        size="sm"
+                        className="h-7 text-xs shrink-0"
+                        onClick={() =>
+                          !isActive && setActiveTitleMutation.mutate(title)
+                        }
+                        disabled={isActive || setActiveTitleMutation.isPending}
+                        data-ocid={"wheel.title.toggle"}
+                      >
+                        {isActive ? "Equipped" : "Set as Title"}
+                      </Button>
+                    </div>
                   );
                 })}
               </div>

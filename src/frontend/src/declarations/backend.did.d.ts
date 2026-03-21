@@ -24,6 +24,16 @@ export interface CategorySummary {
   'completionPercentage' : number,
   'category' : string,
 }
+export interface FriendPublicProfile {
+  'displayName' : string,
+  'earnedTitles' : Array<string>,
+  'highestStreak' : bigint,
+  'activeTitle' : [] | [string],
+  'level' : bigint,
+  'profilePictureUrl' : [] | [string],
+  'currentStreak' : bigint,
+  'totalTaskCompletions' : bigint,
+}
 export interface PremiumStatus {
   'identityCode' : string,
   'status' : { 'pending' : null } |
@@ -41,6 +51,7 @@ export type Priority = { 'low' : null } |
 export interface PublicUserStats {
   'displayName' : string,
   'highestStreak' : bigint,
+  'activeTitle' : [] | [string],
   'level' : bigint,
   'currentStreak' : bigint,
   'totalTaskCompletions' : bigint,
@@ -74,7 +85,33 @@ export interface WheelData {
 export type WheelType = { 'epic' : null } |
   { 'legendary' : null } |
   { 'common' : null };
+export interface _CaffeineStorageCreateCertificateResult {
+  'method' : string,
+  'blob_hash' : string,
+}
+export interface _CaffeineStorageRefillInformation {
+  'proposed_top_up_amount' : [] | [bigint],
+}
+export interface _CaffeineStorageRefillResult {
+  'success' : [] | [boolean],
+  'topped_up_amount' : [] | [bigint],
+}
 export interface _SERVICE {
+  '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
+  '_caffeineStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
+  '_caffeineStorageConfirmBlobDeletion' : ActorMethod<
+    [Array<Uint8Array>],
+    undefined
+  >,
+  '_caffeineStorageCreateCertificate' : ActorMethod<
+    [string],
+    _CaffeineStorageCreateCertificateResult
+  >,
+  '_caffeineStorageRefillCashier' : ActorMethod<
+    [[] | [_CaffeineStorageRefillInformation]],
+    _CaffeineStorageRefillResult
+  >,
+  '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'acceptFriendRequest' : ActorMethod<[Principal], undefined>,
   'applyForPremium' : ActorMethod<[string], undefined>,
@@ -85,6 +122,7 @@ export interface _SERVICE {
     bigint
   >,
   'deleteTask' : ActorMethod<[bigint], undefined>,
+  'getActiveTitle' : ActorMethod<[Principal], [] | [string]>,
   'getAllMonthlySubscriptions' : ActorMethod<[], Array<[Principal, bigint]>>,
   'getAllPremiumApplications' : ActorMethod<
     [],
@@ -103,6 +141,10 @@ export interface _SERVICE {
     Array<[Principal, Array<string>]>
   >,
   'getFriendList' : ActorMethod<[], Array<Principal>>,
+  'getFriendPublicProfile' : ActorMethod<
+    [Principal],
+    [] | [FriendPublicProfile]
+  >,
   'getIncomingRequests' : ActorMethod<[], Array<Principal>>,
   'getMyIdentityCode' : ActorMethod<[], string>,
   'getMyPremiumApplication' : ActorMethod<[], [] | [PremiumStatus]>,
@@ -113,6 +155,7 @@ export interface _SERVICE {
     [bigint, Array<[Principal, PremiumStatus]>]
   >,
   'getPremiumStatus' : ActorMethod<[Principal], [] | [PremiumStatus]>,
+  'getProfilePicture' : ActorMethod<[Principal], [] | [string]>,
   'getPublicStatsForUsers' : ActorMethod<
     [Array<Principal>],
     Array<[Principal, PublicUserStats]>
@@ -137,6 +180,8 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveCategorySummary' : ActorMethod<[CategorySummary], undefined>,
   'sendFriendRequest' : ActorMethod<[Principal], undefined>,
+  'setActiveTitle' : ActorMethod<[string], undefined>,
+  'setProfilePicture' : ActorMethod<[string], undefined>,
   'spinWheel' : ActorMethod<[WheelType], string>,
   'toggleTaskCompletion' : ActorMethod<[bigint], undefined>,
   'updatePublicUserStats' : ActorMethod<[PublicUserStats], undefined>,
