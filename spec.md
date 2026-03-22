@@ -1,34 +1,48 @@
-# GRINDTRACKER
+# GRINDTRACKER v28
 
 ## Current State
-- Friends page shows leaderboard with names, streaks, titles; no click-through to individual profiles
-- No profile picture support anywhere in the app
-- Routine page (premium) only copies tasks; no direct task creation for next day
-- PublicUserStats has: displayName, currentStreak, highestStreak, totalTaskCompletions, level
-- UserProfile has: name, preferences only
-- Blob storage not yet integrated
+- Landing/Login page: dark SaaS-style with hero, stats bar, features grid, CTA. Violet/fuchsia palette hardcoded.
+- Dashboard: header, WeeklyTaskCalendar, score card, StreakDisplay, ProductivityLevelCard, task list, CategoryRadarChart, Suggestions panel.
+- ProductivityLevelCard shows text-based productivity level.
+- Routine page: premium-only with next-day presetting.
+- Friends page: leaderboard. Profile viewing supported.
+- App pages use default shadcn tokens while login uses hard-coded dark palette — inconsistent.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Friend Profile Modal: clicking any user row in the leaderboard opens a modal showing their highest streak, total task completions, achievements (earned badges based on stats), earned titles (with rarity colors), and active/display title
-- Active Title: users can select one of their earned wheel titles as their "display title" shown on their profile and leaderboard
-- Profile Picture: users can upload a profile picture (via blob-storage); displayed in nav header, profile settings, and on friend profile modal
-- Routine Next-Day Preset: new card in RoutinePage to add specific tasks directly for tomorrow (task name, category, priority, duration inputs)
-- Backend: store activeTitle in PublicUserStats; store profilePictureUrl in a separate map; expose getProfilePicture(user) query; expose setActiveTitle(title) mutation
+- Global Theme System: unified dark theme CSS vars across all pages matching login page palette (deep dark bg, violet/fuchsia accents).
+- Login: tagline "Become the top 1% disciplined person", animated background (floating particles/gradient), spider chart preview, Routine Mode demo button.
+- Dashboard Weekly Section: weekly progress bar chart, task completion summary, weekly improvement %.
+- Routine Mode toggle on Dashboard: transforms to Advanced Mode with large score circle, spider chart, pie chart, weekly graph, task stats, Weekly Tick System (Mon-Sun checklist, future days locked).
+- Rank System: replace ProductivityLevelCard with 8-tier rank (Rookie/Focused/Consistent/Disciplined/Elite/Beast/Machine/Apex). Each rank has icon image + glow color. Shown on Dashboard, Profile, Friends.
+- 8 rank icon images (minimal + glowing, different color per rank).
+- Friends Motivation Alerts: show inline alerts when friend has streak >= 7 or daily tasks >= 10.
+- Profile fix: ensure username/tasks/rank/streak/weekly stats display correctly.
+- UX Empty States: "Start building your grind 💪" instead of "No tasks".
+- Progress Insights: weekly improvement % on dashboard.
+- Goal Setting: user sets daily/weekly targets.
+- Daily Reminder: browser notification if no tasks by noon.
 
 ### Modify
-- PublicUserStats: add `activeTitle: ?Text` field
-- FriendsPage: add clickable rows with profile modal
-- RoutinePage: add "Plan Tomorrow" section with task creation form
-- Nav/Header: show user's own avatar if set
+- index.css: unified dark theme CSS variables used everywhere.
+- Dashboard.tsx: Routine Mode toggle, weekly section, RankCard, better empty states.
+- LoginPage.tsx: tagline, animated bg, spider chart preview, routine mode preview button.
+- FriendsPage.tsx: rank badge per friend, motivation alerts.
+- Profile: fix data fetching, show rank + stats.
+- RoutinePage.tsx: Weekly Tick System.
 
 ### Remove
-- Nothing removed
+- ProductivityLevelCard beginner-style text level (replaced by RankCard).
 
 ## Implementation Plan
-1. Backend: extend PublicUserStats with activeTitle field; add profilePicture map; add setActiveTitle, getProfilePicture, setProfilePicture functions; ensure updatePublicUserStats persists activeTitle
-2. Frontend FriendsPage: add click handler on leaderboard rows; build FriendProfileModal component showing stats, achievements grid, titles with rarity colors
-3. Frontend Profile: add profile picture upload button using blob-storage hook; display avatar in nav
-4. Frontend WheelSpinPage: add "Set as Display Title" button next to each earned title
-5. Frontend RoutinePage: add "Plan Tomorrow" card with form to add tasks for tomorrow's date using existing addTask backend function
+1. Generate 8 rank icon images.
+2. Update index.css with unified dark theme.
+3. Add getRank() helper in taskCalculations.ts.
+4. Create RankCard.tsx component.
+5. Update Dashboard with Routine Mode toggle, advanced view, weekly section, empty states, goals.
+6. Update LoginPage with tagline, animated bg, spider preview.
+7. Update FriendsPage with rank badges + motivation alerts.
+8. Fix Profile data fetching and display.
+9. Add weekly tick system to RoutinePage.
+10. Wire Notification API for daily reminder.

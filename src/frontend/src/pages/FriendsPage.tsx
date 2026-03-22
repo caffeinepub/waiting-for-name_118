@@ -22,6 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useActor } from "@/hooks/useActor";
 import { useInternetIdentity } from "@/hooks/useInternetIdentity";
+import { getRankFromTasks } from "@/utils/rankSystem";
 import { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -452,6 +453,64 @@ function LeaderboardSkeleton() {
   );
 }
 
+function MotivationAlerts({ leaderboard }: { leaderboard: RankedEntry[] }) {
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+
+  const alerts: { key: string; msg: string }[] = [];
+  for (const entry of leaderboard) {
+    if (entry.isSelf) continue;
+    const name =
+      entry.stats.displayName?.trim() || entry.principal.toString().slice(0, 8);
+    const streak = Number(entry.stats.currentStreak);
+    const tasks = Number(entry.stats.totalTaskCompletions);
+    if (streak >= 7) {
+      alerts.push({
+        key: `streak-${entry.principal}`,
+        msg: `🔥 ${name} is on a ${streak}-day streak!`,
+      });
+    }
+    if (tasks >= 100 && tasks % 50 === 0) {
+      alerts.push({
+        key: `tasks-${entry.principal}`,
+        msg: `⚡ ${name} has completed ${tasks} tasks!`,
+      });
+    }
+  }
+
+  const visible = alerts.filter((a) => !dismissed.has(a.key));
+  if (visible.length === 0) return null;
+
+  return (
+    <Card className="border-primary/20 bg-primary/5 mb-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          🔔 Activity Alerts
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {visible.map((alert) => (
+          <div
+            key={alert.key}
+            className="flex items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2"
+          >
+            <span className="text-sm">{alert.msg}</span>
+            <button
+              type="button"
+              onClick={() =>
+                setDismissed((prev) => new Set([...prev, alert.key]))
+              }
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Dismiss"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function FriendsPage() {
   const { actor, isFetching: actorFetching } = useActor();
   const { identity } = useInternetIdentity();
@@ -786,6 +845,7 @@ export function FriendsPage() {
 
           {/* LEADERBOARD TAB */}
           <TabsContent value="leaderboard">
+            <MotivationAlerts leaderboard={leaderboard} />
             <Card data-ocid="friends.leaderboard.card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -914,6 +974,20 @@ export function FriendsPage() {
                                             entry.stats,
                                           )}
                                         </span>
+                                        {(() => {
+                                          const r = getRankFromTasks(
+                                            Number(
+                                              entry.stats.totalTaskCompletions,
+                                            ),
+                                          );
+                                          return (
+                                            <span
+                                              className={`text-xs font-semibold ${r.color}`}
+                                            >
+                                              {r.name}
+                                            </span>
+                                          );
+                                        })()}
                                         {entry.isSelf && (
                                           <Badge
                                             variant="secondary"

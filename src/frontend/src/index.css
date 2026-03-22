@@ -4,60 +4,61 @@
 
 @layer base {
   :root {
-    --radius: 0.5rem;
-    --background: 0.98 0.01 240;
-    --foreground: 0.25 0.02 250;
-    --card: 1 0 0;
-    --card-foreground: 0.25 0.02 250;
-    --popover: 1 0 0;
-    --popover-foreground: 0.25 0.02 250;
-    --primary: 0.55 0.18 195;
-    --primary-foreground: 1 0 0;
-    --secondary: 0.95 0.01 240;
-    --secondary-foreground: 0.3 0.02 250;
-    --muted: 0.95 0.01 240;
-    --muted-foreground: 0.5 0.02 250;
-    --accent: 0.7 0.2 35;
-    --accent-foreground: 0.15 0.02 30;
-    --destructive: 0.6 0.22 25;
-    --destructive-foreground: 1 0 0;
-    --success: 0.65 0.18 145;
-    --success-foreground: 1 0 0;
-    --border: 0.9 0.01 240;
-    --input: 0.92 0.01 240;
-    --ring: 0.55 0.18 195;
-    --chart-1: 0.55 0.18 195;
-    --chart-2: 0.65 0.18 145;
-    --chart-3: 0.7 0.2 35;
-    --chart-4: 0.6 0.2 280;
-    --chart-5: 0.65 0.22 325;
-    --chart-6: 0.6 0.18 60;
-    --chart-7: 0.55 0.15 170;
+    --radius: 0.625rem;
+    /* Deep dark violet/fuchsia theme — default is dark */
+    --background: 0.08 0.02 280;
+    --foreground: 0.97 0.002 270;
+    --card: 0.12 0.025 280;
+    --card-foreground: 0.97 0.002 270;
+    --popover: 0.12 0.025 280;
+    --popover-foreground: 0.97 0.002 270;
+    --primary: 0.5 0.24 293;
+    --primary-foreground: 0.97 0 0;
+    --secondary: 0.18 0.03 280;
+    --secondary-foreground: 0.97 0.002 270;
+    --muted: 0.18 0.03 280;
+    --muted-foreground: 0.52 0.01 270;
+    --accent: 0.6 0.26 300;
+    --accent-foreground: 0.97 0 0;
+    --destructive: 0.63 0.22 25;
+    --destructive-foreground: 0.97 0.002 270;
+    --success: 0.7 0.2 145;
+    --success-foreground: 0.97 0 0;
+    --border: 0.22 0.025 280;
+    --input: 0.2 0.03 280;
+    --ring: 0.5 0.24 293;
+    --chart-1: 0.65 0.22 190;
+    --chart-2: 0.7 0.2 145;
+    --chart-3: 0.75 0.22 35;
+    --chart-4: 0.65 0.22 280;
+    --chart-5: 0.7 0.24 325;
+    --chart-6: 0.65 0.2 60;
+    --chart-7: 0.6 0.18 170;
   }
 
   .dark {
-    --background: 0.15 0.03 250;
-    --foreground: 0.95 0.01 240;
-    --card: 0.2 0.03 250;
-    --card-foreground: 0.95 0.01 240;
-    --popover: 0.18 0.03 250;
-    --popover-foreground: 0.95 0.01 240;
-    --primary: 0.65 0.2 190;
-    --primary-foreground: 0.1 0.03 250;
-    --secondary: 0.25 0.03 250;
-    --secondary-foreground: 0.95 0.01 240;
-    --muted: 0.25 0.03 250;
-    --muted-foreground: 0.6 0.02 240;
-    --accent: 0.75 0.22 35;
-    --accent-foreground: 0.1 0.03 250;
+    --background: 0.08 0.02 280;
+    --foreground: 0.97 0.002 270;
+    --card: 0.12 0.025 280;
+    --card-foreground: 0.97 0.002 270;
+    --popover: 0.12 0.025 280;
+    --popover-foreground: 0.97 0.002 270;
+    --primary: 0.5 0.24 293;
+    --primary-foreground: 0.97 0 0;
+    --secondary: 0.18 0.03 280;
+    --secondary-foreground: 0.97 0.002 270;
+    --muted: 0.18 0.03 280;
+    --muted-foreground: 0.52 0.01 270;
+    --accent: 0.6 0.26 300;
+    --accent-foreground: 0.97 0 0;
+    --destructive: 0.63 0.22 25;
+    --destructive-foreground: 0.97 0.002 270;
     --success: 0.7 0.2 145;
-    --success-foreground: 0.1 0.03 250;
-    --destructive: 0.65 0.24 25;
-    --destructive-foreground: 0.95 0.01 240;
-    --border: 0.3 0.03 250;
-    --input: 0.28 0.03 250;
-    --ring: 0.65 0.2 190;
-    --chart-1: 0.65 0.2 190;
+    --success-foreground: 0.97 0 0;
+    --border: 0.22 0.025 280;
+    --input: 0.2 0.03 280;
+    --ring: 0.5 0.24 293;
+    --chart-1: 0.65 0.22 190;
     --chart-2: 0.7 0.2 145;
     --chart-3: 0.75 0.22 35;
     --chart-4: 0.65 0.22 280;
@@ -69,13 +70,18 @@
   * {
     @apply border-border;
   }
+
+  html {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: "Satoshi", "Inter", system-ui, sans-serif;
   }
 }
 
 @layer utilities {
-  /* Custom animations for loading screen */
   @keyframes float {
     0%,
     100% {
@@ -96,11 +102,113 @@
     }
   }
 
+  @keyframes particle-float {
+    0% {
+      transform: translateY(100vh) scale(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateY(-20px) scale(1.2);
+      opacity: 0;
+    }
+  }
+
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes glow-pulse {
+    0%,
+    100% {
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes rainbowSlide {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+
+  @keyframes epicFlash {
+    0%,
+    100% {
+      opacity: 1;
+      color: white;
+    }
+    50% {
+      opacity: 0.4;
+      color: #e0e0ff;
+    }
+  }
+
+  @keyframes score-appear {
+    from {
+      stroke-dashoffset: 440;
+    }
+    to {
+      /* handled inline */
+    }
+  }
+
+  @keyframes lock-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-3px);
+    }
+    75% {
+      transform: translateX(3px);
+    }
+  }
+
   .animate-float {
     animation: float 3s ease-in-out infinite;
   }
 
   .animate-pulse-slow {
     animation: pulse-slow 2s ease-in-out infinite;
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient-shift 4s ease infinite;
+  }
+
+  .animate-glow-pulse {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-particle {
+    animation: particle-float linear infinite;
+  }
+
+  /* Score circle animation helper */
+  .score-ring {
+    transition: stroke-dashoffset 1s ease-out;
   }
 }
